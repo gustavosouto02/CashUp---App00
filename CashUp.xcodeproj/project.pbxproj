@@ -11,7 +11,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		BB0A19DD2DCD79FD00B352F6 /* CashUp */ = {
+		BB0A1A752DCD88DD00B352F6 /* CashUp */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = CashUp;
 			sourceTree = "<group>";
@@ -32,7 +32,7 @@
 		BB0A19D22DCD79FD00B352F6 = {
 			isa = PBXGroup;
 			children = (
-				BB0A19DD2DCD79FD00B352F6 /* CashUp */,
+				BB0A1A752DCD88DD00B352F6 /* CashUp */,
 				BB0A19DC2DCD79FD00B352F6 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -61,7 +61,7 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				BB0A19DD2DCD79FD00B352F6 /* CashUp */,
+				BB0A1A752DCD88DD00B352F6 /* CashUp */,
 			);
 			name = CashUp;
 			packageProductDependencies = (
