@@ -16,6 +16,7 @@ class AddTransactionViewModel: ObservableObject {
     @Published var selectedDate: Date = Date()
     @Published var repeatOption: String = "Nunca"
     @Published var isRepeatDialogPresented: Bool = false // Controla a exibição do menu/modal
+    @Published var repeatEndDate: Date? = nil
     
     private var numberFormatter: NumberFormatter {
         let f = NumberFormatter()

@@ -5,13 +5,6 @@
 //  Created by Gustavo Souto Pereira on 13/05/25.
 //
 
-//
-//  CategoriasViewIcon.swift
-//  CashUp
-//
-//  Created by Gustavo Souto Pereira on 13/05/25.
-//
-
 import SwiftUI
 
 struct CategoriasViewIcon: View {
@@ -47,6 +40,7 @@ struct Categoria: Identifiable {
     let id = UUID()
     let nome: String
     let cor: Color
+    let icon: String
     let subcategorias: [Subcategoria]
 }
 
@@ -56,6 +50,7 @@ struct CategoriasData {
         Categoria(
             nome: "Diversos",
             cor: Color(red: 0.65, green: 0.45, blue: 0.25),
+            icon: "puzzlepiece",
             subcategorias: [
                 Subcategoria(nome: "Custos Bancários", icon: "dollarsign.bank.building.fill"),
                 Subcategoria(nome: "Desconhecido", icon: "questionmark.app.fill"),
@@ -67,6 +62,7 @@ struct CategoriasData {
         Categoria(
             nome: "Entretenimento",
             cor: Color(red: 1.0, green: 0.39, blue: 0.51), // FF6482
+            icon: "gamecontroller",
             subcategorias: [
                 Subcategoria(nome: "Academia", icon: "dumbbell.fill"),
                 Subcategoria(nome: "Assinatura", icon: "rectangle.stack.badge.play.fill"),
@@ -85,6 +81,7 @@ struct CategoriasData {
         Categoria(
             nome: "Comidas e Bebidas",
             cor: .teal,
+            icon: "fork.knife",
             subcategorias: [
                 Subcategoria(nome: "Bebidas", icon: "wineglass.fill"),
                 Subcategoria(nome: "Café", icon: "cup.and.heat.waves.fill"),
@@ -98,6 +95,7 @@ struct CategoriasData {
         Categoria(
             nome: "Habitação",
             cor: .orange,
+            icon: "house",
             subcategorias: [
                 Subcategoria(nome: "Aluguel", icon: "house.fill"),
                 Subcategoria(nome: "Artigos para o lar", icon: "sofa.fill"),
@@ -120,6 +118,7 @@ struct CategoriasData {
         Categoria(
             nome: "Transporte",
             cor: Color(red: 0.75, green: 0.35, blue: 0.98), // BF5AF2
+            icon: "car",
             subcategorias: [
                 Subcategoria(nome: "Carros de Aplicativo", icon: "car.2.fill"),
                 Subcategoria(nome: "Custos do Carro", icon: "car.circle.fill"),
@@ -136,6 +135,7 @@ struct CategoriasData {
         Categoria(
             nome: "Estilo de Vida",
             cor: Color(red: 0.85, green: 0.33, blue: 0.31), // DA544F
+            icon: "figure.wave",
             subcategorias: [
                 Subcategoria(nome: "Animal Estimação", icon: "pawprint.fill"),
                 Subcategoria(nome: "Caridade", icon: "hands.clap.fill"),
@@ -157,6 +157,7 @@ struct CategoriasData {
         Categoria(
             nome: "Renda",
             cor: Color(hue: 135/360, saturation: 0.8, brightness: 0.7), // 30D158
+            icon: "dollarsign",
             subcategorias: [
                 Subcategoria(nome: "Investimentos", icon: "chart.line.uptrend.xyaxis"),
                 Subcategoria(nome: "Juros", icon: "percent"),

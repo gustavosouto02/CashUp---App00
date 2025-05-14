@@ -17,7 +17,7 @@ struct CategoriesViewEdit: View {
                     CategoriaSectionView(categoria: categoria)
                 }
             }
-            .navigationTitle("Categorias")
+            .navigationTitle("Editar categorias")
             .toolbar{
                 ToolbarItem(placement: .topBarTrailing){
                     
@@ -50,7 +50,7 @@ struct CategoriaSectionView: View {
             }
         } header: {
             HStack(spacing: 8) {
-                CategoriasViewIcon(systemName: "pencil", cor: categoria.cor, size: 24)
+                CategoriasViewIcon(systemName: categoria.icon, cor: categoria.cor, size: 24)
                 Text(categoria.nome)
                     .font(.headline)
                     .foregroundStyle(.primary)
