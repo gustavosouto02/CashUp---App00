@@ -9,35 +9,51 @@ import SwiftUI
 
 struct CategoryPicker: View {
     @State private var isCategorySheetPresented = false
-    
-    @Binding var selectedCategory: String
-    
+    @Binding var selectedSubcategory: Subcategoria?
+
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "star.fill")
-                .resizable()
-                .frame(width: 24, height: 24)
-            
-            Button(action: {
+        VStack(spacing: 8) {
+            Button {
                 isCategorySheetPresented = true
-            }) {
-                Text(selectedCategory)
-                    .font(.title2)
-                    .foregroundColor(.primary)
+            } label: {
+                HStack(spacing: 12) {
+                    if let sub = selectedSubcategory,
+                       let categoria = categoriaPara(subcategoria: sub) {
+                        CategoriasViewIcon(systemName: sub.icon, cor: categoria.cor, size: 24)
+                        Text(sub.nome)
+                            .font(.title2)
+                            .foregroundColor(.primary)
+                    } else {
+                        Image(systemName: "star.fill")
+                            .resizable()
+                            .frame(width: 24, height: 24)
+                            .foregroundColor(.primary)
+
+                        Text("Selecionar categoria")
+                            .font(.title2)
+                            .foregroundColor(.primary)
+                    }
+
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .foregroundColor(.gray)
+                }
+                .padding(.vertical, 8)
             }
-            
-            Spacer()
+
+            Divider()
         }
-        .padding(.vertical, 2)
-        Divider()
-        
-        .sheet(isPresented: $isCategorySheetPresented) {
-            CategoriesView { category in
-                selectedCategory = category
-                isCategorySheetPresented = false
-            }
+        .fullScreenCover(isPresented: $isCategorySheetPresented) {
+            CategorySelectionSheet(
+                selectedSubcategory: $selectedSubcategory,
+                isPresented: $isCategorySheetPresented
+            )
         }
-        
+    }
+
+    private func categoriaPara(subcategoria: Subcategoria) -> Categoria? {
+        CategoriasData.todas.first(where: {
+            $0.subcategorias.contains(where: { $0.nome == subcategoria.nome })
+        })
     }
 }
-

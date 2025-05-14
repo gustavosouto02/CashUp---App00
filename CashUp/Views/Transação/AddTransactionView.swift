@@ -11,6 +11,9 @@ struct AddTransactionView: View {
     @Environment(\.sizeCategory) var sizeCategory
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = AddTransactionViewModel()
+    
+    @State private var isCategoryModalPresented = false
+
 
     var body: some View {
         NavigationStack {
@@ -60,7 +63,7 @@ struct AddTransactionView: View {
 
     private var transactionDetailsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            CategoryPicker(selectedCategory: $viewModel.selectedCategory)
+            CategoryPicker(selectedSubcategory: $viewModel.selectedSubcategory)
 
             DescriptionField(description: $viewModel.description)
 
