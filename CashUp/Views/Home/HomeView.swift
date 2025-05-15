@@ -5,6 +5,10 @@ struct HomeView: View {
     @StateObject private var viewModel = MonthSelectorViewModel()
     @State private var isAddTransactionPresented = false
     
+    @State private var selectedSubcategory: Subcategoria? = nil
+    @State private var selectedCategory: Categoria? = nil
+
+    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -61,9 +65,9 @@ struct HomeView: View {
             }
             .fullScreenCover(isPresented: $isAddTransactionPresented) {
                 AddTransactionView(
-                    selectedSubcategory: .constant(nil),  // Usando valor nulo para preview
-                    selectedCategory: .constant(nil)
-                ) // Modal
+                    selectedSubcategory: $selectedSubcategory,
+                    selectedCategory: $selectedCategory
+                ) 
             }
         }
     }
