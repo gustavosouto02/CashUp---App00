@@ -10,26 +10,33 @@ import SwiftUI
 struct CategorySelectionSheet: View {
     @Binding var selectedSubcategory: Subcategoria?
     @Binding var isPresented: Bool
+    @Binding var selectedCategory: Categoria?
 
     var body: some View {
         NavigationStack {
             CategoriesView { selectedName in
-                if let sub = CategoriasData.todas
-                    .flatMap({ $0.subcategorias })
-                    .first(where: { $0.nome == selectedName }) {
+                if let categoria = CategoriasData.todas.first(where: { cat in
+                    cat.subcategorias.contains(where: { $0.nome == selectedName })
+                }),
+                let sub = categoria.subcategorias.first(where: { $0.nome == selectedName }) {
+                    selectedCategory = categoria
                     selectedSubcategory = sub
                 }
-                isPresented = false
+                
+                withAnimation {
+                    isPresented = false
+                }
             }
             .navigationTitle("Categorias")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancelar") {
-                        isPresented = false
+                        withAnimation {
+                            isPresented = false
+                        }
                     }
                 }
             }
         }
     }
 }
-

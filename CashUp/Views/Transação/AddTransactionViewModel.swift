@@ -11,25 +11,27 @@ import SwiftUI
 class AddTransactionViewModel: ObservableObject {
     @Published var selectedTransactionType: Int = 0 // 0: Despesa, 1: Receita
     @Published var amount: Double = 0.0
-    @Published var selectedCategory: String = "Categoria"
     @Published var description: String = ""
     @Published var selectedDate: Date = Date()
-    @Published var repeatOption: String = "Nunca"
+    @Published var repeatOption: RepeatOption = .nunca
     @Published var isRepeatDialogPresented: Bool = false // Controla a exibição do menu/modal
     @Published var repeatEndDate: Date? = nil
+    @Published var selectedCategory: Categoria? = nil
     @Published var selectedSubcategory: Subcategoria? = nil
-
     
-    private var numberFormatter: NumberFormatter {
-        let f = NumberFormatter()
-        f.numberStyle = .decimal
-        f.maximumFractionDigits = 2
-        f.minimumFractionDigits = 0
-        return f
+    
+    
+    private var currencyFormatter: NumberFormatter {
+            let f = NumberFormatter()
+            f.numberStyle = .currency
+            f.locale = Locale.current
+            f.maximumFractionDigits = 2
+            f.minimumFractionDigits = 0
+            return f
     }
     
     func formattedAmount() -> String {
-        return numberFormatter.string(from: NSNumber(value: amount)) ?? "0"
+            currencyFormatter.string(from: NSNumber(value: amount)) ?? "0"
     }
     
     func formatDate(_ date: Date) -> String {
@@ -50,17 +52,11 @@ class AddTransactionViewModel: ObservableObject {
         }
     }
     
-    let repeatOptions: [String] = [
-        "Nunca",
-        "Diariamente",
-        "Semanalmente",
-        "A cada 10 dias",
-        "Mensalmente",
-        "Anualmente"
-    ]
-
+    var repeatOptions: [RepeatOption] {
+        RepeatOption.allCases
+    }
     
-    func setRepeatOption(_ option: String) {
-            repeatOption = option
-        }
+    func setRepeatOption(_ option: RepeatOption) {
+        repeatOption = option
+    }
 }

@@ -12,8 +12,10 @@ struct AddTransactionView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = AddTransactionViewModel()
     
+    @Binding var selectedSubcategory: Subcategoria?
+    @Binding var selectedCategory: Categoria?
+    
     @State private var isCategoryModalPresented = false
-
 
     var body: some View {
         NavigationStack {
@@ -23,7 +25,8 @@ struct AddTransactionView: View {
                         // Seletor de Tipo de Transação
                         TransactionPicker(selectedTransactionType: $viewModel.selectedTransactionType)
 
-                        AmountField(amount: $viewModel.amount)
+                        CurrencyAmountField(amount: $viewModel.amount)
+                            .frame(maxWidth: .infinity, alignment: .center)
 
                         transactionDetailsSection
                     }
@@ -35,7 +38,7 @@ struct AddTransactionView: View {
             }
             .navigationTitle("Registrar Transação")
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: {
                         dismiss()
                     }) {
@@ -44,9 +47,9 @@ struct AddTransactionView: View {
                     }
                 }
 
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
-                        // Ação para adicionar
+                        // Action to add the transaction
                     }) {
                         Text("Adicionar")
                     }
@@ -59,11 +62,29 @@ struct AddTransactionView: View {
                     .padding(.top, 2), alignment: .top
             )
         }
+        .sheet(isPresented: $isCategoryModalPresented) {
+            CategorySelectionSheet(
+                selectedSubcategory: $selectedSubcategory,
+                isPresented: $isCategoryModalPresented,
+                selectedCategory: $selectedCategory
+            )
+        }
+        .onChange(of: selectedSubcategory) { _, newValue in
+            if let newSub = newValue {
+                viewModel.selectedSubcategory = newSub
+                viewModel.selectedCategory = selectedCategory
+            }
+        }
+
     }
 
     private var transactionDetailsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            CategoryPicker(selectedSubcategory: $viewModel.selectedSubcategory)
+            CategoryPicker(
+                selectedSubcategory: $selectedSubcategory,
+                selectedCategory: $selectedCategory,
+                isCategorySheetPresented: $isCategoryModalPresented
+            )
 
             DescriptionField(description: $viewModel.description)
 
@@ -76,7 +97,6 @@ struct AddTransactionView: View {
                 repeatOption: $viewModel.repeatOption,
                 isRepeatDialogPresented: $viewModel.isRepeatDialogPresented,
                 repeatEndDate: $viewModel.repeatEndDate,
-                repeatOptions: viewModel.repeatOptions,
                 selectedDate: viewModel.selectedDate
             )
         }
@@ -85,9 +105,22 @@ struct AddTransactionView: View {
         .cornerRadius(12)
         .frame(minHeight: 120)
     }
+    
 }
 
 #Preview {
-    AddTransactionView()
-        .environment(\.sizeCategory, .medium) // Simula um tamanho de categoria
+    PreviewWrapper()
+    .environment(\.sizeCategory, .medium)
+}
+
+struct PreviewWrapper: View {
+    @State private var selectedSubcategory: Subcategoria? = nil
+    @State private var selectedCategory: Categoria? = nil
+
+    var body: some View {
+        AddTransactionView(
+            selectedSubcategory: $selectedSubcategory,
+            selectedCategory: $selectedCategory
+        )
+    }
 }

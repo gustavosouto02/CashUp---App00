@@ -30,13 +30,13 @@ struct CategoriasViewIcon: View {
     CategoriasViewIcon(systemName: "dollarsign.bank.building.fill", cor: .red, size: 24)
 }
 
-struct Subcategoria: Identifiable {
+struct Subcategoria: Identifiable, Equatable {
     let id = UUID()
     let nome: String
     let icon: String
 }
 
-struct Categoria: Identifiable {
+struct Categoria: Identifiable, Equatable {
     let id = UUID()
     let nome: String
     let cor: Color

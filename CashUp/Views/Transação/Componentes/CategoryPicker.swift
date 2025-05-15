@@ -8,8 +8,9 @@
 import SwiftUI
 
 struct CategoryPicker: View {
-    @State private var isCategorySheetPresented = false
     @Binding var selectedSubcategory: Subcategoria?
+    @Binding var selectedCategory: Categoria?
+    @Binding var isCategorySheetPresented: Bool
 
     var body: some View {
         VStack(spacing: 8) {
@@ -18,13 +19,13 @@ struct CategoryPicker: View {
             } label: {
                 HStack(spacing: 12) {
                     if let sub = selectedSubcategory,
-                       let categoria = categoriaPara(subcategoria: sub) {
-                        CategoriasViewIcon(systemName: sub.icon, cor: categoria.cor, size: 24)
+                       let cat = selectedCategory {
+                        CategoriasViewIcon(systemName: sub.icon, cor: cat.cor, size: 24)
                         Text(sub.nome)
                             .font(.title2)
                             .foregroundColor(.primary)
                     } else {
-                        Image(systemName: "star.fill")
+                        Image(systemName: "square.grid.2x2")
                             .resizable()
                             .frame(width: 24, height: 24)
                             .foregroundColor(.primary)
@@ -43,17 +44,8 @@ struct CategoryPicker: View {
 
             Divider()
         }
-        .fullScreenCover(isPresented: $isCategorySheetPresented) {
-            CategorySelectionSheet(
-                selectedSubcategory: $selectedSubcategory,
-                isPresented: $isCategorySheetPresented
-            )
-        }
     }
-
-    private func categoriaPara(subcategoria: Subcategoria) -> Categoria? {
-        CategoriasData.todas.first(where: {
-            $0.subcategorias.contains(where: { $0.nome == subcategoria.nome })
-        })
-    }
+    
 }
+
+

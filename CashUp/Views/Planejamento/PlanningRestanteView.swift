@@ -58,7 +58,7 @@ struct PlanningRestanteView: View {
                 ]
             )
 
-            Spacer(minLength: 100) // Garante que tudo respire no final
+            Spacer(minLength: 100) 
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
     }

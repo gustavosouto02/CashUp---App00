@@ -1,10 +1,20 @@
 import SwiftUI
 
+enum RepeatOption: String, CaseIterable, Identifiable {
+    case nunca = "Nunca"
+    case diariamente = "Diariamente"
+    case semanalmente = "Semanalmente"
+    case aCada10Dias = "A cada 10 dias"
+    case mensalmente = "Mensalmente"
+    case anualmente = "Anualmente"
+    
+    var id: String { self.rawValue }
+}
+
 struct RepeatOptionPicker: View {
-    @Binding var repeatOption: String
+    @Binding var repeatOption: RepeatOption
     @Binding var isRepeatDialogPresented: Bool
     @Binding var repeatEndDate: Date?
-    var repeatOptions: [String]
     var selectedDate: Date
     
     var body: some View {
@@ -14,42 +24,40 @@ struct RepeatOptionPicker: View {
                     isRepeatDialogPresented = true
                 }) {
                     HStack(spacing: 4) {
-                        Label {
-                            Text("Repetir")
-                                .font(.title2)
-                        } icon:{
-                            Image(systemName: "repeat")
-                                .resizable()
-                                .frame(width: 24, height: 24)
-                        }
-                        .foregroundColor(.primary)
+                        Label("Repetir", systemImage: "repeat")
+                            .font(.title2)
+                            .foregroundColor(.primary)
                         
                         Spacer()
                         
                         Image(systemName: "chevron.left")
                             .font(.caption)
-                        Text(repeatOption)
                             .foregroundColor(.blue)
+                        
+                        Text(repeatOption.rawValue)
+                            .foregroundColor(.blue)
+                            .fontWeight(.semibold)
+                        
                         Image(systemName: "chevron.right")
                             .font(.caption)
+                            .foregroundColor(.blue)
                     }
                 }
             }
             .confirmationDialog("Escolha a frequência de repetição", isPresented: $isRepeatDialogPresented, titleVisibility: .visible) {
-                ForEach(repeatOptions, id: \.self) { option in
-                    Button(option) {
+                ForEach(RepeatOption.allCases) { option in
+                    Button(option.rawValue) {
                         repeatOption = option
-                        if option == "Nunca" {
+                        if option == .nunca {
                             repeatEndDate = nil
                         }
                     }
                 }
             }
 
-            // DatePicker visível apenas se repetição está ativada
-            if repeatOption != "Nunca" {
+            if repeatOption != .nunca {
                 VStack(alignment: .leading, spacing: 8) {
-                    HStack{
+                    HStack {
                         Text("Parar em")
                             .font(.headline)
                         
@@ -58,12 +66,10 @@ struct RepeatOptionPicker: View {
                         DatePicker(
                             "Data de término",
                             selection: Binding(
-                                get: { repeatEndDate ?? Date() },
-                                set: { newValue in
-                                    repeatEndDate = newValue
-                                }
+                                get: { repeatEndDate ?? selectedDate },
+                                set: { newValue in repeatEndDate = newValue }
                             ),
-                            in: selectedDate..., // <-- Evita datas passadas
+                            in: selectedDate..., // Não permite datas anteriores à data selecionada
                             displayedComponents: [.date]
                         )
                         .datePickerStyle(.compact)
