@@ -5,49 +5,34 @@
 //  Created by Gustavo Souto Pereira on 09/05/25.
 //  Dados da visão geral
 
+import Combine
 import Foundation
 import SwiftUI
 
-class MonthSelectorViewModel: ObservableObject {
-    @AppStorage("selectedDate") private var selectedDateString: String = Date().isoString()
-
-    @Published var selectedDate: Date
-    @Published var selectedTab: Int = 0
-
-    private let calendar = Calendar.current
-
-    private let formatter: DateFormatter = {
-        let df = DateFormatter()
-        df.locale = Locale(identifier: "pt_BR")
-        df.dateFormat = "LLLL yyyy"
-        return df
-    }()
-
-    var selectedMonth: String {
-        formatter.string(from: selectedDate).capitalized
-    }
-
-    init() {
-        self.selectedDate = Date()
-
-        // Tenta carregar a data salva
-        if let savedDate = Date.fromISO(selectedDateString) {
-            self.selectedDate = savedDate
-            print("Loaded saved date: \(savedDate)")
-        } else {
-            selectedDateString = selectedDate.isoString()
-            print("Using current date: \(self.selectedDate)")
+class HomeViewModel: ObservableObject {
+    @ObservedObject var planningViewModel: PlanningViewModel
+    
+    @Published var currentMonth: Date{
+        didSet {
+            planningViewModel.currentMonth = currentMonth
+            loadHomeData(for: currentMonth)
         }
     }
-
-    func navigateMonth(isNext: Bool) {
-        if let newDate = calendar.date(byAdding: .month, value: isNext ? 1 : -1, to: selectedDate) {
-            selectedDate = newDate
-            selectedDateString = newDate.isoString() // Atualiza o valor armazenado no @AppStorage
-            print("Navigated to new date: \(newDate)")
-        }
+    
+    @Published var miniChart : [Double] = []
+    @Published var totalSpentMonth : Double = 0
+    
+    private var cancellables: Set<AnyCancellable> = []
+    
+    init(planningViewModel: PlanningViewModel) {
+        self.planningViewModel = planningViewModel
+        self.currentMonth = Date()
+        loadHomeData(for: currentMonth)
     }
+    
+    func loadHomeData(for month: Date){
+        totalSpentMonth = 0 // logic a puxar despesas do mes
+    }
+    
+    
 }
-
-
-

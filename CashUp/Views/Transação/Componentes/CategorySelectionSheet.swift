@@ -11,10 +11,12 @@ struct CategorySelectionSheet: View {
     @Binding var selectedSubcategory: Subcategoria?
     @Binding var isPresented: Bool
     @Binding var selectedCategory: Categoria?
+    
+    @StateObject private var viewModel = CategoriesViewModel()
 
     var body: some View {
         NavigationStack {
-            CategoriesView { selectedName in
+            CategoriesView(viewModel: viewModel) { selectedName in
                 if let categoria = CategoriasData.todas.first(where: { cat in
                     cat.subcategorias.contains(where: { $0.nome == selectedName })
                 }),

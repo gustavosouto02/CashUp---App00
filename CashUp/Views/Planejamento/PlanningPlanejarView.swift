@@ -13,6 +13,7 @@ struct PlanningPlanejarView: View {
     @State private var isCategoryModalPresented = false
     @State private var selectedSubcategory: Subcategoria? = nil
     @State private var selectedCategory: Categoria? = nil
+    @State private var showingAlert = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
@@ -27,6 +28,30 @@ struct PlanningPlanejarView: View {
             if viewModel.categoriasPlanejadas.isEmpty {
                 botaoAdicionarCategoria
             }
+            
+            Spacer()
+            
+            HStack {
+                Text("Planejamento para: \n \(viewModel.currentMonth, format: .dateTime.month(.wide).year(.defaultDigits))")
+                    .font(.caption2)
+                Spacer()
+                Button("Zerar Planejamento") {
+                    showingAlert = true // Mostra o alerta ao tocar no botão
+                }
+                .font(.caption)
+                .alert(isPresented: $showingAlert) { // Define o alerta
+                    Alert(
+                        title: Text("Zerar Planejamento"),
+                        message: Text("Tem certeza que deseja zerar o planejamento para este mês? Esta ação é irreversível."),
+                        primaryButton: .destructive(Text("Zerar")) {
+                            viewModel.zerarPlanejamentoDoMes() // Ação ao confirmar
+                        },
+                        secondaryButton: .cancel(Text("Cancelar")) // Botão de cancelar
+                    )
+                }
+            }
+            .padding(.horizontal)
+            .padding(.top)
         }
         .fullScreenCover(isPresented: $isCategoryModalPresented) {
             CategorySelectionSheet(
@@ -40,10 +65,9 @@ struct PlanningPlanejarView: View {
             viewModel.adicionarSubcategoria(newSubcategory, to: category)
             selectedSubcategory = nil
         }
-        .padding()
     }
     
-    // MARK: - Componentes separados
+    // MARK: - Resumo Despesas Planejadas
     
     private var despesasPlanejadasCard: some View {
         VStack(alignment: .leading, spacing: 24) {
@@ -98,6 +122,7 @@ struct PlanningPlanejarView: View {
         .cornerRadius(12)
         .frame(maxWidth: .infinity)
     }
+    
     
     private var listaCategoriasPlanejadas: some View {
         VStack(alignment: .leading, spacing: 12) {

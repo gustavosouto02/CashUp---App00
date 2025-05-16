@@ -30,18 +30,89 @@ struct CategoriasViewIcon: View {
     CategoriasViewIcon(systemName: "dollarsign.bank.building.fill", cor: .red, size: 24)
 }
 
-struct Subcategoria: Identifiable, Equatable {
-    let id = UUID()
+struct Subcategoria: Identifiable, Equatable, Hashable, Codable {
+    let id: UUID // Declare a propriedade id sem inicialização padrão
     let nome: String
     let icon: String
+
+    // Inicializador padrão
+    init(nome: String, icon: String) {
+        self.id = UUID() // Gera um novo UUID
+        self.nome = nome
+        self.icon = icon
+    }
+
+    // Decodificação personalizada
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id) // Decodifica o UUID
+        nome = try container.decode(String.self, forKey: .nome)
+        icon = try container.decode(String.self, forKey: .icon)
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, nome, icon
+    }
 }
 
-struct Categoria: Identifiable, Equatable {
-    let id = UUID()
+
+struct Categoria: Identifiable, Equatable, Hashable, Codable {
+    let id : UUID
     let nome: String
     let cor: Color
     let icon: String
     let subcategorias: [Subcategoria]
+
+    enum CodingKeys: String, CodingKey {
+        case id, nome, icon, subcategorias, cor
+    }
+    
+    // Inicializador personalizado
+   
+    init(nome: String, cor: Color, icon: String, subcategorias: [Subcategoria]) {
+        self.id = UUID() // Gera um novo UUID
+        self.nome = nome
+        self.cor = cor
+        self.icon = icon
+        self.subcategorias = subcategorias
+    }
+
+
+    // Codificação personalizada
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(nome, forKey: .nome)
+        try container.encode(icon, forKey: .icon)
+        try container.encode(subcategorias, forKey: .subcategorias)
+
+        // Armazenando a cor como um valor RGB
+        let uiColor = UIColor(cgColor: cor.cgColor ?? UIColor.clear.cgColor)
+        try container.encode(uiColor.rgb, forKey: .cor)
+    }
+
+    // Decodificação personalizada
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        nome = try container.decode(String.self, forKey: .nome)
+        icon = try container.decode(String.self, forKey: .icon)
+        subcategorias = try container.decode([Subcategoria].self, forKey: .subcategorias)
+
+        // Decodificando a cor
+        let rgb = try container.decode([CGFloat].self, forKey: .cor)
+        cor = Color(red: rgb[0], green: rgb[1], blue: rgb[2])
+    }
+}
+
+extension UIColor {
+    var rgb: [CGFloat] {
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        self.getRed(&red, green: &green, blue: &blue, alpha: nil)
+        return [red, green, blue]
+    }
 }
 
 // MARK: - Lista de Categorias

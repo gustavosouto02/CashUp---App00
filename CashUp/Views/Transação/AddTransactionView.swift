@@ -40,6 +40,11 @@ struct AddTransactionView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: {
+                        selectedSubcategory = nil
+                        selectedCategory = nil
+                        viewModel.description = ""
+                        viewModel.amount = 0
+
                         dismiss()
                     }) {
                         Text("Cancelar")
