@@ -25,3 +25,4 @@ class MonthSelectorViewModel: ObservableObject {
         selectedMonth = calendar.date(byAdding: components, to: selectedMonth) ?? selectedMonth
     }
 }
+

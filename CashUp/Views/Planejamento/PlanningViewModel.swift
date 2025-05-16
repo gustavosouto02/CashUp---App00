@@ -55,6 +55,7 @@ class PlanningViewModel: ObservableObject {
             print("Erro ao salvar categorias planejadas para:", mesAno)
         }
     }
+    
 
     // Carregar categorias planejadas para o mês atual do UserDefaults
     private func carregarCategoriasPlanejadas(paraMesAno mesAno: String) {

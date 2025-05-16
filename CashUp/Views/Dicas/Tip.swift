@@ -6,3 +6,4 @@
 //  Modelo para as ideias/dicas de gasto
 
 import Foundation
+

@@ -73,6 +73,7 @@ struct HomeView: View {
             .onAppear() {
                 viewModel.loadHomeData(for: Date())
             }
+            
         }
     }
     

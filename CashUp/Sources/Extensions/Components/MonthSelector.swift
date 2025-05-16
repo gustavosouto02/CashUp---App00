@@ -48,3 +48,4 @@ struct MonthSelector: View {
 #Preview {
     MonthSelector(viewModel: MonthSelectorViewModel())
 }
+

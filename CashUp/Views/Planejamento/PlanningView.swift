@@ -50,6 +50,7 @@ struct PlanningView: View {
                 .onAppear {
                 }
             }
+            
             .navigationTitle("Planejamento")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {

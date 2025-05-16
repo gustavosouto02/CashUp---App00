@@ -36,6 +36,7 @@ extension PlanningViewModel {
         }
     }
 
+    
     // MARK: - Cálculos
     func totalCategoria(categoria: CategoriaPlanejada) -> Double {
         categoria.subcategoriasPlanejadas

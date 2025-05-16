@@ -16,3 +16,4 @@ struct TipsView: View {
 #Preview {
     TipsView()
 }
+

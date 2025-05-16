@@ -42,6 +42,7 @@ struct Subcategoria: Identifiable, Equatable, Hashable, Codable {
         self.icon = icon
     }
 
+    
     // Decodificação personalizada
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)

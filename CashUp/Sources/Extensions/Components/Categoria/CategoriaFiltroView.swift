@@ -43,6 +43,7 @@ struct CategoriaFiltroView: View {
         }
     }
     
+    
     private func subcategoriaCard(categoria: Categoria, sub: Subcategoria) -> some View {
         VStack(spacing: 4) {
             CategoriasViewIcon(systemName: sub.icon, cor: categoria.cor, size: 30)

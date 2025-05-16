@@ -177,6 +177,7 @@ struct PlanningPlanejarView: View {
         .frame(maxWidth: .infinity)
     }
     
+    
     private var botaoAdicionarCategoria: some View {
         VStack(alignment: .leading) {
             Button(action: {
