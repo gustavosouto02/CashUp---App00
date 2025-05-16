@@ -6,3 +6,4 @@
 //  Sugestoes de gastos, alertas, ideias
 
 import Foundation
+

@@ -6,3 +6,4 @@
 //  Configurações salvas (ex: biometria habilitada) SHORTCUT E WIDGET
 
 import Foundation
+

@@ -16,3 +16,4 @@ struct BiometricView: View {
 #Preview {
     BiometricView()
 }
+

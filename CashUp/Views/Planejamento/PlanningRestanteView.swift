@@ -107,3 +107,4 @@ struct PlanningRestanteView: View {
 #Preview {
     PlanningRestanteView()
 }
+

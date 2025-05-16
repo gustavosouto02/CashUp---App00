@@ -13,3 +13,4 @@ func categoriaPara(subcategoria: Subcategoria) -> Categoria? {
     })
 }
 
+

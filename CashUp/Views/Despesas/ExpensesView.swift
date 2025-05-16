@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct ExpensesView: View {
-    @StateObject private var viewModel = MonthSelectorViewModel()
+    //@StateObject private var viewModel = MonthSelectorViewModel()
     @State private var selectedTransactionType: Int = 0;
     
     var body: some View {
@@ -16,12 +16,12 @@ struct ExpensesView: View {
             ZStack{
                 ScrollView{
                     VStack(alignment: .leading, spacing: 16){
-                        // MARK: - Seleção de Mês
-                        MonthSelector(
-                            displayedMonth: viewModel.selectedMonth,
-                            onPrevious: { viewModel.navigateMonth(isNext: false) },
-                            onNext: { viewModel.navigateMonth(isNext: true) }
-                        )
+//                        // MARK: - Seleção de Mês
+//                        MonthSelector(
+//                            displayedMonth: viewModel.selectedMonth,
+//                            onPrevious: { viewModel.navigateMonth(isNext: false) },
+//                            onNext: { viewModel.navigateMonth(isNext: true) }
+//                        )
                         
                         // MARK: - Segmented Control
                         TransactionPicker(selectedTransactionType: $selectedTransactionType)
@@ -53,3 +53,4 @@ struct ExpensesView: View {
 #Preview {
     ExpensesView()
 }
+

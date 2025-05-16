@@ -9,35 +9,48 @@ import SwiftUI
 
 struct PlanningView: View {
     @Environment(\.sizeCategory) var sizeCategory
-    @StateObject private var monthViewModel = MonthSelectorViewModel()
-    @StateObject private var planningViewModel = PlanningViewModel()
-    
+    @ObservedObject var viewModel = PlanningViewModel()
+
     var body: some View {
-        NavigationStack {
+        NavigationStack{
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    
+
                     // MARK: - Header
                     MonthSelector(
-                        displayedMonth: monthViewModel.selectedMonth,
-                        onPrevious: { monthViewModel.navigateMonth(isNext: false) },
-                        onNext: { monthViewModel.navigateMonth(isNext: true) }
+                        viewModel: MonthSelectorViewModel(selectedMonth: viewModel.currentMonth),
+                        onMonthChanged: { selectedDate in
+                            viewModel.currentMonth = selectedDate
+                        }
                     )
-                    
-                    Picker("Modo", selection: $planningViewModel.selectedTab) {
+
+                    List {
+                        ForEach(viewModel.planejamentoDoMes) { item in
+                            VStack(alignment: .leading) {
+                                Text(item.descricao)
+                                Text("Data: \(item.data, style: .date)")
+                                Text("Valor Planejado: \(item.valorTotalPlanejado, format: .currency(code: "BRL"))")
+                            }
+                        }
+                    }
+
+                    Picker("Modo", selection: $viewModel.selectedTab) {
                         Text("Planejar").tag(0)
                         Text("Restante").tag(1)
                     }
                     .pickerStyle(.segmented)
-                    
-                    if planningViewModel.selectedTab == 0 {
-                        PlanningPlanejarView(viewModel: planningViewModel)
+
+                    if viewModel.selectedTab == 0 {
+                        PlanningPlanejarView(viewModel: viewModel) // Passando a mesma instância
                     } else {
                         PlanningRestanteView()
                     }
                 }
                 .padding()
+                .onAppear {
+                }
             }
+            
             .navigationTitle("Planejamento")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {

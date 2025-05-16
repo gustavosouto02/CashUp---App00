@@ -64,3 +64,4 @@ struct CategoriaSectionView: View {
 #Preview {
     CategoriesViewEdit()
 }
+

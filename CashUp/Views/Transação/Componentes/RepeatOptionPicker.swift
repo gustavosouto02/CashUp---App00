@@ -54,6 +54,7 @@ struct RepeatOptionPicker: View {
                     }
                 }
             }
+            
 
             if repeatOption != .nunca {
                 VStack(alignment: .leading, spacing: 8) {

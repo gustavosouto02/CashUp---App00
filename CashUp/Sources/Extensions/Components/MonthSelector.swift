@@ -8,27 +8,32 @@
 import SwiftUI
 
 struct MonthSelector: View {
-    let displayedMonth: String
-    let onPrevious: () -> Void
-    let onNext: () -> Void
+    @ObservedObject var viewModel: MonthSelectorViewModel
+    var onMonthChanged: ((Date) -> Void)? // Closure para notificar a mudança de mês
 
     var body: some View {
         HStack {
-            Button(action: onPrevious) {
+            Button(action: {
+                viewModel.navigateMonth(isNext: false)
+                onMonthChanged?(viewModel.selectedMonth) // Notifica a mudança
+            }) {
                 Image(systemName: "chevron.left")
                     .font(.title2)
             }
 
             Spacer()
 
-            Text(displayedMonth)
+            Text(viewModel.displayedMonth)
                 .font(.headline)
                 .bold()
                 .minimumScaleFactor(0.8)
 
             Spacer()
 
-            Button(action: onNext) {
+            Button(action: {
+                viewModel.navigateMonth(isNext: true)
+                onMonthChanged?(viewModel.selectedMonth) // Notifica a mudança
+            }) {
                 Image(systemName: "chevron.right")
                     .font(.title2)
             }
@@ -39,3 +44,8 @@ struct MonthSelector: View {
         .cornerRadius(12)
     }
 }
+
+#Preview {
+    MonthSelector(viewModel: MonthSelectorViewModel())
+}
+

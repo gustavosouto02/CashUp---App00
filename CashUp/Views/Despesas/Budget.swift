@@ -6,3 +6,4 @@
 //  Modelo para metas de planejamento
 
 import Foundation
+

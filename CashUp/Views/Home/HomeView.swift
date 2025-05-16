@@ -2,8 +2,12 @@ import SwiftUI
 
 struct HomeView: View {
     @Environment(\.sizeCategory) var sizeCategory
-    @StateObject private var viewModel = MonthSelectorViewModel()
+    @StateObject private var viewModel = HomeViewModel(planningViewModel: PlanningViewModel())
     @State private var isAddTransactionPresented = false
+    
+    @State private var selectedSubcategory: Subcategoria? = nil
+    @State private var selectedCategory: Categoria? = nil
+    
     
     var body: some View {
         NavigationStack {
@@ -11,19 +15,20 @@ struct HomeView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         
-                        // MARK: - Seleção de Mês
+                        //                        // MARK: - Seleção de Mês
                         MonthSelector(
-                            displayedMonth: viewModel.selectedMonth,
-                            onPrevious: { viewModel.navigateMonth(isNext: false) },
-                            onNext: { viewModel.navigateMonth(isNext: true) }
+                            viewModel: MonthSelectorViewModel(selectedMonth: viewModel.planningViewModel.currentMonth),
+                            onMonthChanged: { selectedDate in
+                                viewModel.currentMonth = selectedDate
+                            }
                         )
                         
                         // MARK: - Cartão 1: Gráfico de gastos
                         miniChartCard
-
+                        
                         // MARK: - Cartão 2: Planejamento
                         planningCard
-
+                        
                         // MARK: - Cartão 3: Despesas
                         expensesCard
                     }
@@ -61,10 +66,14 @@ struct HomeView: View {
             }
             .fullScreenCover(isPresented: $isAddTransactionPresented) {
                 AddTransactionView(
-                    selectedSubcategory: .constant(nil),  // Usando valor nulo para preview
-                    selectedCategory: .constant(nil)
-                ) // Modal
+                    selectedSubcategory: $selectedSubcategory,
+                    selectedCategory: $selectedCategory
+                )
             }
+            .onAppear() {
+                viewModel.loadHomeData(for: Date())
+            }
+            
         }
     }
     
@@ -77,36 +86,38 @@ struct HomeView: View {
                 Text("Mini Gráfico")
                     .foregroundColor(.white)
                     .font(.body)
+                // Text(\(viewModel.miniChartData))
             )
     }
-
+    
     // MARK: - Planejamento (Cartão 2)
-    private var planningCard: some View {
-        NavigationLink(destination: PlanningView()) {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Planejamento")
-                    .font(.headline)
-                Text("Sobrou para gastar")
-                    .font(.caption)
-                    .foregroundColor(.gray)
-                
-                HStack {
-                    Text("R$ 100")
-                        .font(.title2)
-                        .bold()
-                    Text("/ 700")
+        private var planningCard: some View {
+            NavigationLink(destination: PlanningView(viewModel : viewModel.planningViewModel)) {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Planejamento")
+                        .font(.headline)
+                    Text("Total planejado para o mês")
                         .font(.caption)
-                }
-                ProgressView(value: 100, total: 700)
-            }
-            .padding()
-            .background(Color.gray.opacity(0.2))
-            .cornerRadius(12)
-            .frame(minHeight: 150)
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
+                        .foregroundColor(.gray)
 
+                    HStack {
+                        Text("R$ 200") // lofica de total gasto do planejamento
+                            .font(.title2)
+                            .bold()
+                        Text("/ R$ \(viewModel.planningViewModel.valorTotalPlanejado(categorias: viewModel.planningViewModel.categoriasPlanejadas), specifier: "%.2f")")
+                        // Você pode adicionar mais informações aqui, como uma meta total se tiver uma
+                    }
+                    ProgressView( value: 200, total: viewModel.planningViewModel.valorTotalPlanejado(categorias: viewModel.planningViewModel.categoriasPlanejadas))
+                }
+                .padding()
+                .background(Color.gray.opacity(0.2))
+                .cornerRadius(12)
+                .frame(minHeight: 150)
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(PlainButtonStyle())
+        } 
+    
     // MARK: - Despesas (Cartão 3)
     private var expensesCard: some View {
         NavigationLink(destination: ExpensesView()) {
@@ -138,6 +149,26 @@ struct HomeView: View {
         }
         .buttonStyle(PlainButtonStyle())
     }
+    
+    //    private var expensesCard: some View {
+    //            NavigationLink(destination: ExpensesView()) {
+    //                VStack(alignment: .leading, spacing: 16) {
+    //                    Text("Despesas")
+    //                        .font(.headline)
+    //                    Text("Categorias principais")
+    //                        .font(.caption)
+    //                        .foregroundColor(.gray)
+    //
+    //                    // Aqui você usaria os dados de despesas do viewModel
+    //                    Text("Total Gasto: R$ \(viewModel.totalSpentThisMonth, specifier: "%.2f")") // Exemplo
+    //                    // ... mais informações sobre as categorias de despesas
+    //                }
+    //                .padding()
+    //                .background(Color.gray.opacity(0.2))
+    //                .cornerRadius(12)
+    //            }
+    //            .buttonStyle(PlainButtonStyle())
+    //        }
 }
 
 #Preview {

@@ -11,7 +11,8 @@ import SwiftUI
 struct CashUpApp: App {
     var body: some Scene {
         WindowGroup {
-            WelcomeView()
+            HomeView()
         }
     }
 }
+
