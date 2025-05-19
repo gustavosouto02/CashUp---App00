@@ -36,6 +36,7 @@ struct AddTransactionView: View {
                     .padding(.top, 16)
                 }
             }
+            .hideKeyboardOnTap()
             .navigationTitle("Registrar Transação")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -130,3 +131,10 @@ struct PreviewWrapper: View {
     }
 }
 
+extension View {
+    func hideKeyboardOnTap() -> some View {
+        self.onTapGesture {
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
+    }
+}

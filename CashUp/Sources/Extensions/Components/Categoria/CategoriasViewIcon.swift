@@ -1,12 +1,6 @@
-//
-//  CategoriasViewIcon.swift
-//  CashUp
-//
-//  Created by Gustavo Souto Pereira on 13/05/25.
-//
-
 import SwiftUI
 
+// MARK: - View do ícone com fundo em círculo
 struct CategoriasViewIcon: View {
     let systemName: String
     let cor: Color
@@ -14,14 +8,12 @@ struct CategoriasViewIcon: View {
 
     var body: some View {
         ZStack {
-            // Círculo com padding visual
             Circle()
-                .fill(cor)
-                .frame(width: size * 1.4, height: size * 1.4) // Ajustando o tamanho do círculo
-            // Ícone centralizado dentro do círculo, com tamanho proporcional
+                .fill(cor) // cor sólida, sem transparência
+                .frame(width: size * 1.4, height: size * 1.4)
+
             Image(systemName: systemName)
-                .frame(alignment: .center) // Centraliza o ícone no círculo
-                .font(.system(size: size * 0.6)) // Tamanho do ícone ajustável com base no 'size'
+                .font(.system(size: size * 0.6))
                 .foregroundColor(.white)
         }
     }
@@ -30,93 +22,61 @@ struct CategoriasViewIcon: View {
     CategoriasViewIcon(systemName: "dollarsign.bank.building.fill", cor: .red, size: 24)
 }
 
+// MARK: - Subcategoria
 struct Subcategoria: Identifiable, Equatable, Hashable, Codable {
-    let id: UUID // Declare a propriedade id sem inicialização padrão
+    let id: UUID
     let nome: String
     let icon: String
 
-    // Inicializador padrão
-    init(nome: String, icon: String) {
-        self.id = UUID() // Gera um novo UUID
+    // Agora id pode ser passado manualmente (para reutilizar)
+    init(id: UUID = UUID(), nome: String, icon: String) {
+        self.id = id
         self.nome = nome
         self.icon = icon
     }
-
-    
-    // Decodificação personalizada
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        id = try container.decode(UUID.self, forKey: .id) // Decodifica o UUID
-        nome = try container.decode(String.self, forKey: .nome)
-        icon = try container.decode(String.self, forKey: .icon)
-    }
-
-    enum CodingKeys: String, CodingKey {
-        case id, nome, icon
-    }
 }
 
-
+// MARK: - Categoria
 struct Categoria: Identifiable, Equatable, Hashable, Codable {
-    let id : UUID
+    let id: UUID
     let nome: String
-    let cor: Color
+    let cor: CodableColor
     let icon: String
     let subcategorias: [Subcategoria]
 
-    enum CodingKeys: String, CodingKey {
-        case id, nome, icon, subcategorias, cor
-    }
-    
-    // Inicializador personalizado
-   
-    init(nome: String, cor: Color, icon: String, subcategorias: [Subcategoria]) {
-        self.id = UUID() // Gera um novo UUID
+    var color: Color { cor.color }
+
+    // Também aceita id opcional para reutilizar
+    init(id: UUID = UUID(), nome: String, cor: Color, icon: String, subcategorias: [Subcategoria]) {
+        self.id = id
         self.nome = nome
-        self.cor = cor
+        self.cor = CodableColor(color: cor)
         self.icon = icon
         self.subcategorias = subcategorias
     }
+}
 
+// MARK: - CodableColor para codificar/descodificar Color
+struct CodableColor: Codable, Equatable, Hashable {
+    let red: CGFloat
+    let green: CGFloat
+    let blue: CGFloat
 
-    // Codificação personalizada
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(id, forKey: .id)
-        try container.encode(nome, forKey: .nome)
-        try container.encode(icon, forKey: .icon)
-        try container.encode(subcategorias, forKey: .subcategorias)
-
-        // Armazenando a cor como um valor RGB
-        let uiColor = UIColor(cgColor: cor.cgColor ?? UIColor.clear.cgColor)
-        try container.encode(uiColor.rgb, forKey: .cor)
+    var color: Color {
+        Color(red: red, green: green, blue: blue)
     }
 
-    // Decodificação personalizada
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        id = try container.decode(UUID.self, forKey: .id)
-        nome = try container.decode(String.self, forKey: .nome)
-        icon = try container.decode(String.self, forKey: .icon)
-        subcategorias = try container.decode([Subcategoria].self, forKey: .subcategorias)
-
-        // Decodificando a cor
-        let rgb = try container.decode([CGFloat].self, forKey: .cor)
-        cor = Color(red: rgb[0], green: rgb[1], blue: rgb[2])
+    init(color: Color) {
+        let uiColor = UIColor(color)
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0
+        uiColor.getRed(&r, green: &g, blue: &b, alpha: nil)
+        self.red = r
+        self.green = g
+        self.blue = b
     }
 }
 
-extension UIColor {
-    var rgb: [CGFloat] {
-        var red: CGFloat = 0
-        var green: CGFloat = 0
-        var blue: CGFloat = 0
-        self.getRed(&red, green: &green, blue: &blue, alpha: nil)
-        return [red, green, blue]
-    }
-}
-
-// MARK: - Lista de Categorias
+// MARK: - CategoriasData (Mock)
 struct CategoriasData {
     static let todas: [Categoria] = [
         Categoria(
@@ -133,7 +93,7 @@ struct CategoriasData {
         ),
         Categoria(
             nome: "Entretenimento",
-            cor: Color(red: 1.0, green: 0.39, blue: 0.51), // FF6482
+            cor: Color(red: 1.0, green: 0.39, blue: 0.51),
             icon: "gamecontroller",
             subcategorias: [
                 Subcategoria(nome: "Academia", icon: "dumbbell.fill"),
@@ -189,7 +149,7 @@ struct CategoriasData {
         ),
         Categoria(
             nome: "Transporte",
-            cor: Color(red: 0.75, green: 0.35, blue: 0.98), // BF5AF2
+            cor: Color(red: 0.75, green: 0.35, blue: 0.98),
             icon: "car",
             subcategorias: [
                 Subcategoria(nome: "Carros de Aplicativo", icon: "car.2.fill"),
@@ -206,7 +166,7 @@ struct CategoriasData {
         ),
         Categoria(
             nome: "Estilo de Vida",
-            cor: Color(red: 0.85, green: 0.33, blue: 0.31), // DA544F
+            cor: Color(red: 0.85, green: 0.33, blue: 0.31),
             icon: "figure.wave",
             subcategorias: [
                 Subcategoria(nome: "Animal Estimação", icon: "pawprint.fill"),
@@ -228,7 +188,7 @@ struct CategoriasData {
         ),
         Categoria(
             nome: "Renda",
-            cor: Color(hue: 135/360, saturation: 0.8, brightness: 0.7), // 30D158
+            cor: Color(hue: 135/360, saturation: 0.8, brightness: 0.7),
             icon: "dollarsign",
             subcategorias: [
                 Subcategoria(nome: "Investimentos", icon: "chart.line.uptrend.xyaxis"),

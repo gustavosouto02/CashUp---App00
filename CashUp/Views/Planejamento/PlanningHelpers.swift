@@ -10,17 +10,24 @@ import SwiftUI
 extension PlanningViewModel {
     
     // MARK: - Adição de Subcategorias
-    func adicionarSubcategoria(_ sub: Subcategoria, to categoria: Categoria) {
+    func adicionarSubcategoria(_ sub: Subcategoria, to categoria: Categoria) -> Bool {
         if let index = categoriasPlanejadas.firstIndex(where: { $0.categoria.nome == categoria.nome }) {
-            categoriasPlanejadas[index].subcategoriasPlanejadas.append(
-                SubcategoriaPlanejada(subcategoria: sub, valorPlanejado: "")
-            )
+            let existe = categoriasPlanejadas[index].subcategoriasPlanejadas.contains(where: { $0.subcategoria.nome == sub.nome })
+            if !existe {
+                categoriasPlanejadas[index].subcategoriasPlanejadas.append(
+                    SubcategoriaPlanejada(subcategoria: sub, valorPlanejado: "")
+                )
+                return true // adicionou com sucesso
+            } else {
+                return false // já existe
+            }
         } else {
             let novaCategoria = CategoriaPlanejada(
                 categoria: categoria,
                 subcategoriasPlanejadas: [SubcategoriaPlanejada(subcategoria: sub, valorPlanejado: "")]
             )
             categoriasPlanejadas.append(novaCategoria)
+            return true // adicionou com sucesso
         }
     }
 
