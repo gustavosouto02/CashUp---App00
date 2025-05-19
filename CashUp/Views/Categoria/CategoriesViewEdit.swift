@@ -30,7 +30,7 @@ struct CategoriesViewEdit: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(Color.black)
+            //.background(Color.primary)
         }
     }
 }
@@ -42,7 +42,7 @@ struct CategoriaSectionView: View {
         Section {
             ForEach(categoria.subcategorias) { sub in
                 HStack(spacing: 12) {
-                    CategoriasViewIcon(systemName: sub.icon, cor: categoria.cor, size: 24)
+                    CategoriasViewIcon(systemName: sub.icon, cor: categoria.color, size: 24)
                     Text(sub.nome)
                         .foregroundStyle(.primary)
                 }
@@ -50,7 +50,7 @@ struct CategoriaSectionView: View {
             }
         } header: {
             HStack(spacing: 8) {
-                CategoriasViewIcon(systemName: categoria.icon, cor: categoria.cor, size: 24)
+                CategoriasViewIcon(systemName: categoria.icon, cor: categoria.color, size: 24)
                 Text(categoria.nome)
                     .font(.headline)
                     .foregroundStyle(.primary)

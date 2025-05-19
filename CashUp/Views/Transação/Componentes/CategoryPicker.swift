@@ -20,7 +20,7 @@ struct CategoryPicker: View {
                 HStack(spacing: 12) {
                     if let sub = selectedSubcategory,
                        let cat = selectedCategory {
-                        CategoriasViewIcon(systemName: sub.icon, cor: cat.cor, size: 24)
+                        CategoriasViewIcon(systemName: sub.icon, cor: cat.color, size: 24)
                         Text(sub.nome)
                             .font(.title2)
                             .foregroundColor(.primary)
