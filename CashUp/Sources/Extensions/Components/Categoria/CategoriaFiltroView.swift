@@ -29,13 +29,13 @@ struct CategoriaFiltroView: View {
                     .overlay(
                         Image(systemName: categoria.icon)
                             .font(.system(size: 24))
-                            .foregroundColor(selectedCategoria == categoria.nome ? categoria.cor.color : .gray)
+                            .foregroundStyle(selectedCategoria == categoria.nome ? categoria.cor.color : .gray)
                     )
                 
                 if selectedCategoria == categoria.nome {
                     Text(categoria.nome)
                         .font(.caption2)
-                        .foregroundColor(.primary)
+                        .foregroundStyle(.primary)
                         .multilineTextAlignment(.center)
                         .lineLimit(1)
                         .frame(maxWidth: buttonSize)
@@ -52,7 +52,7 @@ struct CategoriaFiltroView: View {
 
             Text(sub.nome)
                 .font(.footnote)
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
                 .minimumScaleFactor(0.7)
@@ -84,12 +84,12 @@ struct CategoriaFiltroView: View {
                     .bold()
                     .padding(.horizontal, 12)
                     .padding(.top, 12)
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
                 
                 if subcategoriasFrequentes.isEmpty {
                     Text("Nenhuma subcategoria frequente ainda.")
                         .font(.footnote)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .padding(.horizontal, 12)
                         .padding(.bottom, 12)
                         .frame(maxWidth: .infinity)
@@ -103,7 +103,7 @@ struct CategoriaFiltroView: View {
 
                                     Text(sub.nome)
                                         .font(.footnote)
-                                        .foregroundColor(.primary)
+                                        .foregroundStyle(.primary)
                                         .multilineTextAlignment(.center)
                                         .lineLimit(1)
                                         .minimumScaleFactor(0.5)

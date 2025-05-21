@@ -12,7 +12,7 @@ struct CategoriesView: View {
     @State private var isEditing = false
     @State private var selectedCategoria: String = "Todas"
     @State private var subcategoriaSelecionada: Subcategoria?
-    var onCategorySelected: (String) -> Void
+    var onCategorySelected: (Subcategoria) -> Void
 
     var body: some View {
         NavigationStack {
@@ -36,7 +36,7 @@ struct CategoriesView: View {
                                 viewModel.registrarUso(subcategoria: sub)
 
                                 // Acionar o retorno
-                                onCategorySelected(sub.nome)
+                                onCategorySelected(sub)
                             },
                             subcategoriasFrequentes: viewModel.subcategoriasMaisUsadas
                         )

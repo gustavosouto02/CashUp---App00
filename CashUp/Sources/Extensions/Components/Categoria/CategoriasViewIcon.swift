@@ -14,7 +14,7 @@ struct CategoriasViewIcon: View {
 
             Image(systemName: systemName)
                 .font(.system(size: size * 0.6))
-                .foregroundColor(.white)
+                .foregroundStyle(.white)
         }
     }
 }

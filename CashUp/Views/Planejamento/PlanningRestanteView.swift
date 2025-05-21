@@ -72,7 +72,7 @@ struct PlanningRestanteView: View {
                     .bold()
                 Spacer()
                 Text("R$ \(valorRestante, specifier: "%.2f") restante")
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
 
             ForEach(subcategorias.indices, id: \.self) { index in
@@ -82,13 +82,13 @@ struct PlanningRestanteView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
                         Image(systemName: icone)
-                            .foregroundColor(.purple)
+                            .foregroundStyle(.purple)
                             .font(.system(size: 24))
                         Text(nome)
                         Spacer()
                         Text("R$ \(valor, specifier: "%.2f") / \(limite, specifier: "%.2f")")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
 
                     ProgressView(value: progresso)

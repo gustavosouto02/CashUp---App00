@@ -8,6 +8,8 @@ struct HomeView: View {
     @State private var selectedSubcategory: Subcategoria? = nil
     @State private var selectedCategory: Categoria? = nil
     
+    @StateObject private var expensesVM = ExpensesViewModel()
+    
     
     var body: some View {
         NavigationStack {
@@ -67,7 +69,7 @@ struct HomeView: View {
             .fullScreenCover(isPresented: $isAddTransactionPresented) {
                 AddTransactionView(
                     selectedSubcategory: $selectedSubcategory,
-                    selectedCategory: $selectedCategory
+                    selectedCategory: $selectedCategory, expensesViewModel: ExpensesViewModel()
                 )
             }
             .onAppear() {
@@ -84,7 +86,7 @@ struct HomeView: View {
             .frame(height: 200)
             .overlay(
                 Text("Mini Gráfico")
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
                     .font(.body)
                 // Text(\(viewModel.miniChartData))
             )
@@ -98,7 +100,7 @@ struct HomeView: View {
                         .font(.headline)
                     Text("Total planejado para o mês")
                         .font(.caption)
-                        .foregroundColor(.gray)
+                        .foregroundStyle(.gray)
 
                     HStack {
                         Text("R$ 200") // lofica de total gasto do planejamento
@@ -126,7 +128,7 @@ struct HomeView: View {
                     .font(.headline)
                 Text("Categorias principais")
                     .font(.caption)
-                    .foregroundColor(.gray)
+                    .foregroundStyle(.gray)
                 
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 4) {
@@ -157,7 +159,7 @@ struct HomeView: View {
     //                        .font(.headline)
     //                    Text("Categorias principais")
     //                        .font(.caption)
-    //                        .foregroundColor(.gray)
+    //                        .foregroundStyle(.gray)
     //
     //                    // Aqui você usaria os dados de despesas do viewModel
     //                    Text("Total Gasto: R$ \(viewModel.totalSpentThisMonth, specifier: "%.2f")") // Exemplo

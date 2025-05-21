@@ -14,10 +14,8 @@ class AddTransactionViewModel: ObservableObject {
     @Published var description: String = ""
     @Published var selectedDate: Date = Date()
     @Published var repeatOption: RepeatOption = .nunca
-    @Published var isRepeatDialogPresented: Bool = false // Controla a exibição do menu/modal
     @Published var repeatEndDate: Date? = nil
-    @Published var selectedCategory: Categoria? = nil
-    @Published var selectedSubcategory: Subcategoria? = nil
+    @Published var isRepeatDialogPresented: Bool = false // Controla a exibição do menu/modal
     
     
     
@@ -59,5 +57,45 @@ class AddTransactionViewModel: ObservableObject {
     func setRepeatOption(_ option: RepeatOption) {
         repeatOption = option
     }
-}
+    
+    func criarTransacao(
+        categoria: Categoria?,
+        subcategoria: Subcategoria?,
+        expensesViewModel: ExpensesViewModel
+    ) -> Bool {
+        guard let categoria = categoria,
+              let subcategoria = subcategoria,
+              amount > 0 else {
+            return false
+        }
 
+        let repetition = Repetition(repeatOption: repeatOption, endDate: repeatEndDate)
+
+        let novaTransacao = Expense(
+            id: UUID(),
+            amount: amount,
+            date: selectedDate,
+            category: categoria,
+            subcategory: subcategoria,
+            description: description,
+            isIncome: selectedTransactionType == 1,
+            repetition: repetition
+        )
+
+        expensesViewModel.addExpense(novaTransacao)
+
+        resetFields()
+        return true
+    }
+
+    
+    func resetFields() {
+        amount = 0
+        description = ""
+        selectedDate = Date()
+        repeatOption = .nunca
+        repeatEndDate = nil
+    }
+
+
+}

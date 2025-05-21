@@ -155,7 +155,7 @@ struct PlanningPlanejarView: View {
                 }) {
                     HStack {
                         Image(systemName: "plus.circle.fill")
-                            .foregroundColor(.blue)
+                            .foregroundStyle(.blue)
                         Text("Adicionar Subcategoria")
                     }
                     .padding(.top, 4)
@@ -210,7 +210,7 @@ struct PlanningPlanejarView: View {
             Text("Subcategoria já adicionada")
                 .padding()
                 .background(Color.red.opacity(0.85))
-                .foregroundColor(.white)
+                .foregroundStyle(.white)
                 .cornerRadius(10)
                 .padding(.horizontal, 40)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -233,7 +233,7 @@ struct PlanningPlanejarView: View {
         }) {
             HStack {
                 Image(systemName: "plus.circle.fill")
-                    .foregroundColor(.blue)
+                    .foregroundStyle(.blue)
                 Text("Adicionar Categoria")
             }
             .frame(maxWidth: .infinity)

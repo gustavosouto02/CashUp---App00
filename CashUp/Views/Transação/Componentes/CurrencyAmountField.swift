@@ -1,23 +1,4 @@
-//
-//import SwiftUI
-//struct CurrencyAmountField: View {
-//    @Binding var amount: Double
-//    @FocusState private var isFocused: Bool
-//
-//    var body: some View {
-//        HStack {
-//            Spacer()
-//            CurrencyTextField(amount: $amount)
-//                .frame(width: 240, height: 80)
-//                .focused($isFocused)
-//                .font(.system(size: 48, weight: .bold))
-//                .minimumScaleFactor(0.5)
-//                .multilineTextAlignment(.center)
-//                .keyboardType(.numberPad)
-//            Spacer()
-//        }
-//    }
-//}
+
 import SwiftUI
 
 struct CurrencyAmountField: View {

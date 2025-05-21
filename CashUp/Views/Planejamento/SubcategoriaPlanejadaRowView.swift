@@ -21,7 +21,7 @@ struct SubcategoriaPlanejadaRowView: View {
                 if isEditing {
                     Button(action: toggleSelection) {
                         Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                            .foregroundColor(isSelected ? .blue : .gray)
+                            .foregroundStyle(isSelected ? .blue : .gray)
                             .imageScale(.large)
                     }
                     .buttonStyle(PlainButtonStyle()) // remove efeito padrão de botão

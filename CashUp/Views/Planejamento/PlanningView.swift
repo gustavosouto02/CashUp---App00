@@ -39,7 +39,7 @@ struct PlanningView: View {
                                         .font(.subheadline)
                                     Text("Data: \(item.data, style: .date)")
                                         .font(.caption)
-                                        .foregroundColor(.gray)
+                                        .foregroundStyle(.gray)
                                     Text("Valor Planejado: \(item.valorTotalPlanejado, format: .currency(code: "BRL"))")
                                         .font(.caption)
                                 }
@@ -80,6 +80,10 @@ struct PlanningView: View {
                                 subcategoriasSelecionadas.removeAll()
                                 isEditing = false
                             }
+                            .foregroundStyle(.red)
+                            .padding(.trailing, 8)
+                            
+
                         }
 
                         Button(action: {
