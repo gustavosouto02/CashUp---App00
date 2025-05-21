@@ -18,18 +18,17 @@ class AddTransactionViewModel: ObservableObject {
     @Published var isRepeatDialogPresented: Bool = false // Controla a exibição do menu/modal
     
     
-    
     private var currencyFormatter: NumberFormatter {
-            let f = NumberFormatter()
-            f.numberStyle = .currency
-            f.locale = Locale.current
-            f.maximumFractionDigits = 2
-            f.minimumFractionDigits = 0
-            return f
+        let f = NumberFormatter()
+        f.numberStyle = .currency
+        f.locale = Locale.current
+        f.maximumFractionDigits = 2
+        f.minimumFractionDigits = 0
+        return f
     }
     
     func formattedAmount() -> String {
-            currencyFormatter.string(from: NSNumber(value: amount)) ?? "0"
+        currencyFormatter.string(from: NSNumber(value: amount)) ?? "0"
     }
     
     func formatDate(_ date: Date) -> String {
@@ -61,11 +60,25 @@ class AddTransactionViewModel: ObservableObject {
     func criarTransacao(
         categoria: Categoria?,
         subcategoria: Subcategoria?,
-        expensesViewModel: ExpensesViewModel
+        expensesViewModel: ExpensesViewModel // <--- Esta instância PRECISA ser a do ambiente
     ) -> Bool {
-        guard let categoria = categoria,
-              let subcategoria = subcategoria,
+        guard let selectedCategoria = categoria,
+              let selectedSubcategoria = subcategoria,
               amount > 0 else {
+            return false // Validação básica
+        }
+
+        // Tenta encontrar a categoria gerenciada pelo ExpensesViewModel.
+        // Isso é uma camada de segurança. O ideal é que `selectedCategory` já seja a instância correta
+        // vinda do CategorySelectionSheet.
+        guard let managedCategory = expensesViewModel.availableCategories.first(where: { $0.id == selectedCategoria.id }) else {
+            print("Erro: Categoria selecionada não encontrada nas categorias disponíveis do ViewModel. Transação não criada.")
+            return false
+        }
+
+        // Tenta encontrar a subcategoria gerenciada dentro da categoria gerenciada.
+        guard let managedSubcategory = managedCategory.subcategorias.first(where: { $0.id == selectedSubcategoria.id }) else {
+            print("Erro: Subcategoria selecionada não encontrada na categoria gerenciada. Transação não criada.")
             return false
         }
 
@@ -75,19 +88,19 @@ class AddTransactionViewModel: ObservableObject {
             id: UUID(),
             amount: amount,
             date: selectedDate,
-            category: categoria,
-            subcategory: subcategoria,
+            category: managedCategory,       // <-- Usa a instância gerenciada
+            subcategory: managedSubcategory, // <-- Usa a instância gerenciada
             description: description,
             isIncome: selectedTransactionType == 1,
             repetition: repetition
         )
 
-        expensesViewModel.addExpense(novaTransacao)
+        expensesViewModel.addExpense(novaTransacao) // Chama addExpense na instância compartilhada
 
         resetFields()
         return true
     }
-
+    
     
     func resetFields() {
         amount = 0
@@ -96,6 +109,4 @@ class AddTransactionViewModel: ObservableObject {
         repeatOption = .nunca
         repeatEndDate = nil
     }
-
-
 }

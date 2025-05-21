@@ -5,12 +5,6 @@
 //  Created by Gustavo Souto Pereira on 09/05/25.
 //  Despesas e renda
 
-//
-//  ExpensesViewModel.swift
-//  CashUp
-//
-//  Created by Gustavo Souto Pereira on 09/05/25.
-//  Despesas e renda
 
 import Foundation
 import SwiftUI
@@ -54,8 +48,36 @@ class ExpensesViewModel: ObservableObject {
     
     // MARK: - Métodos Públicos
     
+    // Modify addExpense to ensure category and subcategory instances are from availableCategories
     func addExpense(_ expense: Expense) {
-        expensesDoMes.append(expense)
+        // 1. Tenta encontrar a CATEGORIA correspondente nas categorias disponíveis (availableCategories)
+        // usando o ID da categoria da despesa.
+        guard let existingCategory = availableCategories.first(where: { $0.id == expense.category.id }) else {
+            print("Erro: Categoria '\(expense.category.nome)' (ID: \(expense.category.id)) não encontrada em availableCategories. Transação não adicionada.")
+            return // Se a categoria não for encontrada, não adicionamos a despesa para evitar inconsistências.
+        }
+
+        // 2. Tenta encontrar a SUBCATEGORIA correspondente dentro da categoria existente
+        // (que acabamos de encontrar) usando o ID da subcategoria da despesa.
+        guard let existingSubcategory = existingCategory.subcategorias.first(where: { $0.id == expense.subcategory.id }) else {
+            print("Erro: Subcategoria '\(expense.subcategory.nome)' (ID: \(expense.subcategory.id)) não encontrada na categoria '\(existingCategory.nome)'. Transação não adicionada.")
+            return // Se a subcategoria não for encontrada, não adicionamos a despesa.
+        }
+
+        // 3. Cria uma NOVA instância de Expense, mas agora usando as INSTÂNCIAS GERENCIADAS
+        // de Categoria e Subcategoria que foram encontradas.
+        let newExpense = Expense(
+            id: expense.id,
+            amount: expense.amount,
+            date: expense.date,
+            category: existingCategory,       // <-- Usa a instância existente/gerenciada
+            subcategory: existingSubcategory, // <-- Usa a instância existente/gerenciada
+            description: expense.description,
+            isIncome: expense.isIncome,
+            repetition: expense.repetition
+        )
+
+        expensesDoMes.append(newExpense)
     }
     
     func removeExpense(_ expense: Expense) {
@@ -95,11 +117,37 @@ class ExpensesViewModel: ObservableObject {
     private func carregarExpensesDoMes() {
         let key = "expenses-\(currentMesAno)"
         if let data = UserDefaults.standard.data(forKey: key),
-           let decoded = try? JSONDecoder().decode([Expense].self, from: data) {
-            self.expensesDoMes = decoded
+           let decodedExpenses = try? JSONDecoder().decode([Expense].self, from: data) {
+
+            // 1. Processa as despesas decodificadas. Usamos `compactMap` para ignorar despesas
+            // que não correspondem a uma categoria/subcategoria existente em `availableCategories`.
+            self.expensesDoMes = decodedExpenses.compactMap { loadedExpense in
+                // 1.1. Tenta encontrar a instância REAL da categoria em `availableCategories`
+                guard let categoryToUse = availableCategories.first(where: { $0.id == loadedExpense.category.id }) else {
+                    print("Aviso: Categoria '\(loadedExpense.category.nome)' (ID: \(loadedExpense.category.id)) de despesa carregada não encontrada nas categorias disponíveis. Despesa será ignorada.")
+                    return nil // Retorna nil para `compactMap` para remover esta despesa
+                }
+
+                // 1.2. Tenta encontrar a instância REAL da subcategoria dentro da categoria encontrada
+                guard let subcategoryToUse = categoryToUse.subcategorias.first(where: { $0.id == loadedExpense.subcategory.id }) else {
+                    print("Aviso: Subcategoria '\(loadedExpense.subcategory.nome)' (ID: \(loadedExpense.subcategory.id)) de despesa carregada não encontrada na categoria '\(categoryToUse.nome)'. Despesa será ignorada.")
+                    return nil // Retorna nil para `compactMap` para remover esta despesa
+                }
+
+                // 1.3. Se ambas forem encontradas, retorna uma nova Expense usando as instâncias gerenciadas
+                return Expense(
+                    id: loadedExpense.id,
+                    amount: loadedExpense.amount,
+                    date: loadedExpense.date,
+                    category: categoryToUse,       // <-- Usa a instância existente/gerenciada
+                    subcategory: subcategoryToUse, // <-- Usa a instância existente/gerenciada
+                    description: loadedExpense.description,
+                    isIncome: loadedExpense.isIncome,
+                    repetition: loadedExpense.repetition
+                )
+            }
         } else {
-            self.expensesDoMes = []
+            self.expensesDoMes = [] // Se não houver dados ou houver erro, inicializa com array vazio
         }
     }
-    
 }

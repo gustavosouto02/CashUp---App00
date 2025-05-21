@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct ExpensesView: View {
-    @ObservedObject var viewModel = ExpensesViewModel()
+    @EnvironmentObject var viewModel: ExpensesViewModel
     @State private var selectedTransactionType: Int = 0
 
     var body: some View {
@@ -32,17 +32,12 @@ struct ExpensesView: View {
                 // MARK: - Picker de tipo de transação (ainda não está em uso)
                 TransactionPicker(selectedTransactionType: $selectedTransactionType)
                 
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(.systemGray6))
-                    .frame(height: 200)
-                    .frame(maxWidth: .infinity)
-                    .overlay(
-                        ExpensesPorCategoriaListView(viewModel: viewModel)
-                            .frame(height: 200) // Ajustável
-
-//                        RoundedRectangle(cornerRadius: 16)
-//                            .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                    )
+                ExpensesPorCategoriaListView(viewModel: viewModel)
+                    .frame(height: 200) // Ajustável, se necessário
+                    .background(Color(.systemGray6)) // Define o fundo
+                    .cornerRadius(16) // Aplica o arredondamento de canto
+                    .frame(maxWidth: .infinity) // Garante que ocupe a largura total
+                                
 
                 
                 Text("Extrato de Despesas")
@@ -73,5 +68,6 @@ struct ExpensesView: View {
 
 #Preview {
     ExpensesView()
+        .environmentObject(ExpensesViewModel())
 }
 

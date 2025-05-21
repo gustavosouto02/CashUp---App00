@@ -10,14 +10,13 @@ struct HomeView: View {
     
     @StateObject private var expensesVM = ExpensesViewModel()
     
-    
     var body: some View {
         NavigationStack {
             ZStack {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         
-                        //                        // MARK: - Seleção de Mês
+                        // MARK: - Seleção de Mês
                         MonthSelector(
                             viewModel: MonthSelectorViewModel(selectedMonth: viewModel.planningViewModel.currentMonth),
                             onMonthChanged: { selectedDate in
@@ -48,14 +47,12 @@ struct HomeView: View {
             .toolbar {
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     Button(action: {
-                        // ação do botão de info
                     }) {
                         Image(systemName: "info.circle.fill")
                             .font(.headline)
                     }
                     
                     Button(action: {
-                        // ação do botão de registrar
                         isAddTransactionPresented = true
                     }) {
                         HStack(spacing: 4) {
@@ -69,13 +66,13 @@ struct HomeView: View {
             .fullScreenCover(isPresented: $isAddTransactionPresented) {
                 AddTransactionView(
                     selectedSubcategory: $selectedSubcategory,
-                    selectedCategory: $selectedCategory, expensesViewModel: ExpensesViewModel()
+                    selectedCategory: $selectedCategory
                 )
+                .environmentObject(expensesVM)
             }
             .onAppear() {
                 viewModel.loadHomeData(for: Date())
             }
-            
         }
     }
     
@@ -93,36 +90,37 @@ struct HomeView: View {
     }
     
     // MARK: - Planejamento (Cartão 2)
-        private var planningCard: some View {
-            NavigationLink(destination: PlanningView(viewModel : viewModel.planningViewModel)) {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Planejamento")
-                        .font(.headline)
-                    Text("Total planejado para o mês")
-                        .font(.caption)
-                        .foregroundStyle(.gray)
-
-                    HStack {
-                        Text("R$ 200") // lofica de total gasto do planejamento
-                            .font(.title2)
-                            .bold()
-                        Text("/ R$ \(viewModel.planningViewModel.valorTotalPlanejado(categorias: viewModel.planningViewModel.categoriasPlanejadas), specifier: "%.2f")")
-                        // Você pode adicionar mais informações aqui, como uma meta total se tiver uma
-                    }
-                    ProgressView( value: 200, total: viewModel.planningViewModel.valorTotalPlanejado(categorias: viewModel.planningViewModel.categoriasPlanejadas))
+    private var planningCard: some View {
+        NavigationLink(destination: PlanningView(viewModel : viewModel.planningViewModel)) {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Planejamento")
+                    .font(.headline)
+                Text("Total planejado para o mês")
+                    .font(.caption)
+                    .foregroundStyle(.gray)
+                
+                HStack {
+                    Text("R$ 200") // lofica de total gasto do planejamento
+                        .font(.title2)
+                        .bold()
+                    Text("/ R$ \(viewModel.planningViewModel.valorTotalPlanejado(categorias: viewModel.planningViewModel.categoriasPlanejadas), specifier: "%.2f")")
+    
                 }
-                .padding()
-                .background(Color.gray.opacity(0.2))
-                .cornerRadius(12)
-                .frame(minHeight: 150)
-                .frame(maxWidth: .infinity)
+                ProgressView( value: 200, total: viewModel.planningViewModel.valorTotalPlanejado(categorias: viewModel.planningViewModel.categoriasPlanejadas))
             }
-            .buttonStyle(PlainButtonStyle())
-        } 
+            .padding()
+            .background(Color.gray.opacity(0.2))
+            .cornerRadius(12)
+            .frame(minHeight: 150)
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
     
     // MARK: - Despesas (Cartão 3)
     private var expensesCard: some View {
-        NavigationLink(destination: ExpensesView()) {
+
+        NavigationLink(destination: ExpensesView().environmentObject(expensesVM)) {
             VStack(alignment: .leading, spacing: 16) {
                 Text("Despesas")
                     .font(.headline)
@@ -151,28 +149,9 @@ struct HomeView: View {
         }
         .buttonStyle(PlainButtonStyle())
     }
-    
-    //    private var expensesCard: some View {
-    //            NavigationLink(destination: ExpensesView()) {
-    //                VStack(alignment: .leading, spacing: 16) {
-    //                    Text("Despesas")
-    //                        .font(.headline)
-    //                    Text("Categorias principais")
-    //                        .font(.caption)
-    //                        .foregroundStyle(.gray)
-    //
-    //                    // Aqui você usaria os dados de despesas do viewModel
-    //                    Text("Total Gasto: R$ \(viewModel.totalSpentThisMonth, specifier: "%.2f")") // Exemplo
-    //                    // ... mais informações sobre as categorias de despesas
-    //                }
-    //                .padding()
-    //                .background(Color.gray.opacity(0.2))
-    //                .cornerRadius(12)
-    //            }
-    //            .buttonStyle(PlainButtonStyle())
-    //        }
 }
 
 #Preview {
     HomeView()
+        .environmentObject(ExpensesViewModel())
 }

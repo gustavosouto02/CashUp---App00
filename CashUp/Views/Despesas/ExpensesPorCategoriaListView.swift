@@ -7,10 +7,17 @@
 
 import SwiftUI
 
+// NOVO: Struct auxiliar para passar dados para a SubcategoryDetailView
+struct SubcategoryDetailSheetData: Identifiable {
+    let id = UUID() // Adiciona um ID único para conformar a Identifiable
+    let subcategoria: Subcategoria
+    let categoryColor: Color
+}
+
 struct ExpensesPorCategoriaListView: View {
     @ObservedObject var viewModel: ExpensesViewModel
     @State private var expandedCategories: Set<UUID> = []
-    @State private var selectedSubcategory: Subcategoria? = nil
+    @State private var selectedSubcategoryData: SubcategoryDetailSheetData? = nil // Alterado para o novo tipo
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -24,7 +31,7 @@ struct ExpensesPorCategoriaListView: View {
                 LazyVStack(spacing: 12) {
                     ForEach(categoriasComGasto, id: \.id) { categoria in
                         VStack(spacing: 0) {
-                            // Card da categoria principal (já ajustado)
+                            // Card da categoria principal
                             Button {
                                 toggleCategory(categoria.id)
                             } label: {
@@ -47,7 +54,7 @@ struct ExpensesPorCategoriaListView: View {
                                         .foregroundStyle(.secondary)
                                 }
                                 .padding(.horizontal)
-                                .padding(.vertical, 8)
+                                .padding(.vertical, 10)
                                 .background(
                                     RoundedRectangle(cornerRadius: 12)
                                         .fill(Color(.systemGray6))
@@ -60,10 +67,10 @@ struct ExpensesPorCategoriaListView: View {
                                 VStack(spacing: 6) {
                                     ForEach(subcategoriasDaCategoria(categoria), id: \.id) { sub in
                                         Button {
-                                            selectedSubcategory = sub
+                                            // NOVO: Criando uma instância da nova struct
+                                            selectedSubcategoryData = SubcategoryDetailSheetData(subcategoria: sub, categoryColor: categoria.color)
                                         } label: {
                                             HStack {
-                                                
                                                 Circle()
                                                     .fill(categoria.color)
                                                     .frame(width: 10, height: 10)
@@ -95,8 +102,8 @@ struct ExpensesPorCategoriaListView: View {
                 }
             }
         }
-        .sheet(item: $selectedSubcategory) { sub in
-            SubcategoryDetailView(subcategoria: sub, viewModel: viewModel)
+        .sheet(item: $selectedSubcategoryData) { data in
+            SubcategoryDetailView(subcategoria: data.subcategoria, categoryColor: data.categoryColor, viewModel: viewModel)
         }
     }
 
@@ -134,12 +141,5 @@ struct ExpensesPorCategoriaListView: View {
         } else {
             expandedCategories.insert(id)
         }
-    }
-
-    func formatCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.locale = Locale(identifier: "pt_BR")
-        return formatter.string(from: NSNumber(value: value)) ?? "R$ 0,00"
     }
 }

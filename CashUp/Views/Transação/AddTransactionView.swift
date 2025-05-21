@@ -15,7 +15,8 @@ struct AddTransactionView: View {
     @Binding var selectedSubcategory: Subcategoria?
     @Binding var selectedCategory: Categoria?
     
-    @ObservedObject var expensesViewModel: ExpensesViewModel
+    // Isso é como a view espera receber o ExpensesViewModel: do ambiente
+    @EnvironmentObject var expensesViewModel: ExpensesViewModel
     
     @State private var isCategoryModalPresented = false
     @State private var showSuccessAlert = false
@@ -61,7 +62,7 @@ struct AddTransactionView: View {
                         let sucesso = viewModel.criarTransacao(
                             categoria: selectedCategory,
                             subcategoria: selectedSubcategory,
-                            expensesViewModel: expensesViewModel
+                            expensesViewModel: expensesViewModel // Passa a instância do EnvironmentObject
                         )
 
                         if sucesso {
@@ -128,14 +129,18 @@ struct AddTransactionView: View {
 struct PreviewWrapper: View {
     @State private var selectedSubcategory: Subcategoria? = nil
     @State private var selectedCategory: Categoria? = nil
-    @StateObject private var expensesViewModel = ExpensesViewModel()
+    
+    // Crie a instância do ViewModel que será fornecida ao ambiente
+    @StateObject private var expensesViewModelForPreview = ExpensesViewModel()
     
     var body: some View {
+        // Agora, use o modificador .environmentObject para injetar o ViewModel
         AddTransactionView(
             selectedSubcategory: $selectedSubcategory,
-            selectedCategory: $selectedCategory,
-            expensesViewModel: expensesViewModel
+            selectedCategory: $selectedCategory
+            // Remova o parâmetro 'expensesViewModel' daqui!
         )
+        .environmentObject(expensesViewModelForPreview) // <--- FORMA CORRETA DE INJETAR
     }
 }
 
@@ -147,4 +152,3 @@ extension View {
         }
     }
 }
-

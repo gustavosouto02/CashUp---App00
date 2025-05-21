@@ -88,6 +88,11 @@ struct PlanningPlanejarView: View {
 
         VStack(spacing: 4) {
             HStack {
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(categoria.categoria.color) // Usa a cor da categoria mestra
+                    .frame(width: 12, height: 12)
+                    .padding(.leading, 4) // Ajuste o espaçamento conforme necessário
+
                 Text(categoria.categoria.nome)
                     .font(.subheadline)
                     .lineLimit(1)

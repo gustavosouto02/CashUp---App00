@@ -7,60 +7,101 @@
 
 import SwiftUI
 
+// Struct auxiliar para representar cada seção da lista
+struct ExpenseSection: Identifiable {
+    let id = UUID() // Para conformar a Identifiable
+    let date: Date
+    let expenses: [Expense]
+}
+
 struct SubcategoryDetailView: View {
     let subcategoria: Subcategoria
+    let categoryColor: Color // Adicionado para passar a cor da categoria
     @ObservedObject var viewModel: ExpensesViewModel
     @Environment(\.dismiss) var dismiss
-
-    var despesas: [Expense] {
-        viewModel.expensesDoMes.filter {
+    
+    // Propriedade computada para gerar as seções da lista
+    var sections: [ExpenseSection] {
+        let filteredExpenses = viewModel.expensesDoMes.filter {
             $0.subcategory.id == subcategoria.id
         }
+        
+        let groupedByDate = Dictionary(grouping: filteredExpenses) { expense in
+            Calendar.current.startOfDay(for: expense.date)
+        }
+        
+        // Mapeia para ExpenseSection e ordena as datas (mais recentes primeiro),
+        // e as despesas dentro de cada seção também são ordenadas por data (mais recentes primeiro).
+        return groupedByDate.keys.sorted(by: { $0 > $1 }).map { date in
+            ExpenseSection(date: date, expenses: groupedByDate[date]!.sorted(by: { $0.date > $1.date }))
+        }
     }
-
+    
     var body: some View {
         NavigationStack {
-            ScrollView {
-                LazyVStack(spacing: 12) {
-                    ForEach(despesas) { expense in
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Text(formatDate(expense.date))
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-
-                                Spacer()
-
-                                Text(formatCurrency(expense.amount))
-                                    .font(.headline)
-                                    .fontWeight(.semibold)
-                            }
-
-                            if !expense.description.isEmpty {
-                                Text(expense.description)
-                                    .font(.footnote)
-                                    .foregroundStyle(.gray)
-                            }
-                        }
-                        .padding()
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(Color(.systemBackground))
-                                .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
-                        )
-                        .padding(.horizontal)
-                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                            Button(role: .destructive) {
-                                viewModel.removeExpense(expense)
-                            } label: {
-                                Label("Excluir", systemImage: "trash")
+            // O conteúdo principal da NavigationStack
+            Group { // Usamos Group para encapsular o condicional e aplicar modificadores a ele.
+                if sections.isEmpty {
+                    VStack {
+                        Spacer()
+                        Text("Nenhuma transação registrada para esta subcategoria neste mês.")
+                            .foregroundStyle(.secondary)
+                            .padding()
+                        Spacer()
+                    }
+                } else {
+                    List {
+                        ForEach(sections) { section in
+                            Section(header: Text(formatSectionDate(section.date))) {
+                                ForEach(section.expenses) { expense in
+                                    // Linha de despesa
+                                    HStack {
+                                        // Ícone da subcategoria
+                                        Image(systemName: subcategoria.icon)
+                                            .resizable()
+                                            .scaledToFit()
+                                            .frame(width: 24, height: 24)
+                                            // Usa a cor da categoria da despesa
+                                            .foregroundStyle(expense.category.color)
+                                        
+                                        VStack(alignment: .leading) {
+                                            // Mantendo a lógica original do VStack da descrição
+                                            if expense.description.isEmpty {
+                                                Text(subcategoria.nome)
+                                                    .font(.headline)
+                                            } else {
+                                                Text(subcategoria.nome)
+                                                    .font(.headline)
+                                                Text(expense.description)
+                                                    .font(.subheadline)
+                                                    .foregroundStyle(.secondary)
+                                            }
+                                        }
+                                        
+                                        Spacer()
+                                        
+                                        Text(formatCurrency(expense.amount))
+                                            .font(.headline)
+                                            .fontWeight(.semibold)
+                                            .foregroundStyle(expense.isIncome ? .green : .red)
+                                    }
+                                    .padding(.vertical, 8)
+                                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                        Button(role: .destructive) {
+                                            viewModel.removeExpense(expense)
+                                        } label: {
+                                            Label("Excluir", systemImage: "trash")
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
+                    .listStyle(.plain)
                 }
-                .padding(.vertical)
             }
             .navigationTitle(subcategoria.nome)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Fechar") {
@@ -69,20 +110,6 @@ struct SubcategoryDetailView: View {
                 }
             }
         }
-    }
-
-    func formatCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.locale = Locale(identifier: "pt_BR")
-        return formatter.string(from: NSNumber(value: value)) ?? "R$ 0,00"
-    }
-
-    func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "pt_BR")
-        formatter.dateStyle = .short
-        return formatter.string(from: date)
     }
 }
 

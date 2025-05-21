@@ -11,38 +11,57 @@ struct ExpensesListView: View {
     @ObservedObject var viewModel: ExpensesViewModel
     
     var body: some View {
-        List {
-            ForEach(groupedExpenses.keys.sorted(by: >), id: \.self) { date in
-                Section(
-                    header:
-                        HStack {
-                            Text(formattedDate(date))
-                                .font(.headline)
-                                .foregroundStyle(.secondary)
-                            
-                            Spacer()
-                            
-                            Text(formatCurrency(totalForDay(date)))
-                                .font(.headline.bold())
-                                .foregroundStyle(totalForDay(date) >= 0 ? .green : .red)
+        if viewModel.expensesDoMes.isEmpty{
+            VStack {
+                Spacer()
+                Image(systemName: "note.text")
+                    .font(.largeTitle)
+                    .foregroundStyle(.gray)
+                    .padding(.bottom, 8)
+                Text("Nenhuma transação neste mês")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundStyle(.secondary)
+                Text("Que tal registrar sua primeira despesa ou receita?")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }else{
+            List {
+                ForEach(groupedExpenses.keys.sorted(by: >), id: \.self) { date in
+                    Section(
+                        header:
+                            HStack {
+                                Text(formattedDate(date))
+                                    .font(.headline)
+                                    .foregroundStyle(.secondary)
+                                
+                                Spacer()
+                                
+                                Text(formatCurrency(totalForDay(date)))
+                                    .font(.headline.bold())
+                                    .foregroundStyle(totalForDay(date) >= 0 ? .green : .red)
+                            }
+                            .padding(.vertical, 2)
+                    ) {
+                        ForEach(groupedExpenses[date] ?? []) { expense in
+                            ExpenseRow(expense: expense)
+                                .listRowInsets(EdgeInsets())
+                                .listRowBackground(Color(.systemGray6))
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 4)
                         }
-                        .padding(.vertical, 2)
-                ) {
-                    ForEach(groupedExpenses[date] ?? []) { expense in
-                        ExpenseRow(expense: expense)
-                            .listRowInsets(EdgeInsets())
-                            .listRowBackground(Color(.systemGray6))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 4)
-                    }
-                    .onDelete { offsets in
-                        deleteExpense(at: offsets, for: date)
+                        .onDelete { offsets in
+                            deleteExpense(at: offsets, for: date)
+                        }
                     }
                 }
             }
+            .listStyle(.plain)
+            .padding(.bottom, 8)
         }
-        .listStyle(.plain)
-        .padding(.bottom, 8)
     }
     
     // MARK: Agrupamento e Cálculos
