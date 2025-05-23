@@ -9,7 +9,8 @@ import SwiftUI
 
 struct CategoriaFiltroView: View {
     var categorias: [Categoria]
-    @Binding var selectedCategoria: String
+    // Mudar para UUID? para permitir nil (Todas)
+    @Binding var selectedCategoriaID: UUID?
     var onSubcategoriaSelected: (Subcategoria) -> Void
     
     var subcategoriasFrequentes: [Subcategoria] = []
@@ -20,19 +21,22 @@ struct CategoriaFiltroView: View {
     // Botão para filtrar categoria
     private func categoriaButton(categoria: Categoria) -> some View {
         Button(action: {
-            selectedCategoria = categoria.nome
+            selectedCategoriaID = categoria.id
         }) {
             VStack(spacing: 4) {
                 RoundedRectangle(cornerRadius: buttonCornerRadius)
-                    .fill(selectedCategoria == categoria.nome ? categoria.cor.color.opacity(0.2) : Color.gray.opacity(0.15))
+                    // Comparar pelo ID
+                    .fill(selectedCategoriaID == categoria.id ? categoria.cor.color.opacity(0.2) : Color.gray.opacity(0.15))
                     .frame(width: buttonSize, height: buttonSize)
                     .overlay(
                         Image(systemName: categoria.icon)
                             .font(.system(size: 24))
-                            .foregroundStyle(selectedCategoria == categoria.nome ? categoria.cor.color : .gray)
+                            // Comparar pelo ID
+                            .foregroundStyle(selectedCategoriaID == categoria.id ? categoria.cor.color : .gray)
                     )
                 
-                if selectedCategoria == categoria.nome {
+                // Comparar pelo ID
+                if selectedCategoriaID == categoria.id {
                     Text(categoria.nome)
                         .font(.caption2)
                         .foregroundStyle(.primary)
@@ -48,6 +52,7 @@ struct CategoriaFiltroView: View {
     // Card para subcategoria com ícone e nome
     private func subcategoriaCard(categoria: Categoria, sub: Subcategoria) -> some View {
         VStack(spacing: 4) {
+            // A 'categoria' já é a categoria correta para esta subcategoria
             CategoriasViewIcon(systemName: sub.icon, cor: categoria.cor.color, size: 30)
 
             Text(sub.nome)
@@ -62,16 +67,6 @@ struct CategoriaFiltroView: View {
         .frame(maxWidth: .infinity, minHeight: 90)
         .padding(8)
         .background(Color.white.opacity(0.001)) // área clicável
-    }
-    
-    // Auxiliar para encontrar categoria da subcategoria
-    private func categoriaPara(_ subcategoria: Subcategoria) -> Categoria? {
-        for categoria in categorias {
-            if categoria.subcategorias.contains(where: { $0.id == subcategoria.id }) {
-                return categoria
-            }
-        }
-        return nil
     }
     
     var body: some View {
@@ -97,7 +92,11 @@ struct CategoriaFiltroView: View {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 12) {
                             ForEach(subcategoriasFrequentes) { sub in
-                                let cor = categoriaPara(sub)?.cor.color ?? .gray
+                                // CORREÇÃO AQUI: Use CategoriasData.categoriasub(for:) para encontrar a categoria pai da subcategoria
+                                let cor = CategoriasData.categoriasub(for: sub.id)?.cor.color ?? .gray
+                                
+                            
+
                                 VStack(spacing: 4) {
                                     CategoriasViewIcon(systemName: sub.icon, cor: cor, size: 30)
 
@@ -130,7 +129,31 @@ struct CategoriaFiltroView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
                     // Categoria "Todas" para resetar filtro
-                    categoriaButton(categoria: Categoria(nome: "Todas", cor: .blue, icon: "square.grid.2x2.fill", subcategorias: []))
+                    Button(action: {
+                        selectedCategoriaID = nil // Define nil para "Todas"
+                    }) {
+                        VStack(spacing: 4) {
+                            RoundedRectangle(cornerRadius: buttonCornerRadius)
+                                // Comparar com nil para "Todas"
+                                .fill(selectedCategoriaID == nil ? Color.blue.opacity(0.2) : Color.gray.opacity(0.15))
+                                .frame(width: buttonSize, height: buttonSize)
+                                .overlay(
+                                    Image(systemName: "square.grid.2x2.fill")
+                                        .font(.system(size: 24))
+                                        .foregroundStyle(selectedCategoriaID == nil ? .blue : .gray)
+                                )
+                            
+                            if selectedCategoriaID == nil {
+                                Text("Todas")
+                                    .font(.caption2)
+                                    .foregroundStyle(.primary)
+                                    .multilineTextAlignment(.center)
+                                    .lineLimit(1)
+                                    .frame(maxWidth: buttonSize)
+                            }
+                        }
+                    }
+                    .buttonStyle(PlainButtonStyle())
                     
                     // Botões para todas as outras categorias
                     ForEach(categorias) { categoria in
@@ -138,11 +161,14 @@ struct CategoriaFiltroView: View {
                     }
                 }
                 .padding(.horizontal)
-                .animation(.easeInOut, value: selectedCategoria)
+                .animation(.easeInOut, value: selectedCategoriaID) // Animação com o ID
             }
             
             // Exibição das categorias filtradas
-            ForEach(categorias.filter { selectedCategoria == "Todas" || $0.nome == selectedCategoria }) { categoria in
+            ForEach(categorias.filter {
+                // Filtrar pelo ID, se houver um ID selecionado
+                selectedCategoriaID == nil || $0.id == selectedCategoriaID
+            }) { categoria in
                 VStack(alignment: .leading, spacing: 8) {
                     Text(categoria.nome)
                         .font(.title3)
@@ -168,15 +194,25 @@ struct CategoriaFiltroView: View {
 
 struct CategoriaFiltroView_Previews: PreviewProvider {
     struct Wrapper: View {
-        @State private var categoriaSelecionada: String = "Todas"
+        // Mudar para UUID? e inicializar com nil para "Todas"
+        @State private var categoriaSelecionadaID: UUID? = nil
         
         var body: some View {
             CategoriaFiltroView(
                 categorias: CategoriasData.todas,
-                selectedCategoria: $categoriaSelecionada,
+                selectedCategoriaID: $categoriaSelecionadaID, // Passar o binding do ID
                 onSubcategoriaSelected: { sub in
-                    print("Subcategoria selecionada: \(sub.nome)")
-                }
+                    print("Subcategoria selecionada: \(sub.nome) (ID: \(sub.id))")
+                    if let cat = CategoriasData.categoriasub(for: sub.id) {
+                        print("Categoria pai: \(cat.nome) (ID: \(cat.id))")
+                    }
+                },
+                // Exemplo de como popular subcategoriasFrequentes para o preview
+                subcategoriasFrequentes: [
+                    CategoriasData.todas[0].subcategorias[0], // "Custos Bancários"
+                    CategoriasData.todas[1].subcategorias[0], // "Academia"
+                    CategoriasData.todas[2].subcategorias[1]  // "Café"
+                ]
             )
         }
     }

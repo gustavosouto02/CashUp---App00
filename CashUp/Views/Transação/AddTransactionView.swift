@@ -10,7 +10,7 @@ import SwiftUI
 struct AddTransactionView: View {
     @Environment(\.sizeCategory) var sizeCategory
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var viewModel = AddTransactionViewModel()
+    @StateObject private var viewModel = AddTransactionViewModel() // Nosso ViewModel local
     
     @Binding var selectedSubcategory: Subcategoria?
     @Binding var selectedCategory: Categoria?
@@ -41,14 +41,13 @@ struct AddTransactionView: View {
                 }
             }
             .hideKeyboardOnTap()
-            .navigationTitle("Registrar Transação")
+            .navigationTitle("Registrar Gasto")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: {
-                        selectedSubcategory = nil
+                        selectedSubcategory = nil // Limpa os bindings externos também
                         selectedCategory = nil
-                        viewModel.description = ""
-                        viewModel.amount = 0
+                        viewModel.resetFields() // Limpa o estado interno do ViewModel
                         
                         dismiss()
                     }) {
@@ -61,12 +60,13 @@ struct AddTransactionView: View {
                     Button("Adicionar") {
                         let sucesso = viewModel.criarTransacao(
                             categoria: selectedCategory,
-                            subcategoria: selectedSubcategory,
-                            expensesViewModel: expensesViewModel // Passa a instância do EnvironmentObject
+                            subcategoria: selectedSubcategory
+                            // expensesViewModel NÃO é mais passado aqui
                         )
 
                         if sucesso {
                             showSuccessAlert = true
+                            // Limpa os bindings externos após o sucesso
                             selectedCategory = nil
                             selectedSubcategory = nil
                         }
@@ -81,9 +81,19 @@ struct AddTransactionView: View {
                     selectedCategory: $selectedCategory
                 )
             }
-            .alert("Transação registrada", isPresented: $showSuccessAlert) {
+            .alert("Gasto registrada", isPresented: $showSuccessAlert) {
                 Button("OK") {
                     dismiss()
+                }
+            }
+            // MARK: - Setup do closure do ViewModel
+            // Este é o ponto onde a conexão entre AddTransactionViewModel e ExpensesViewModel é feita.
+            .onAppear {
+                viewModel.onTransactionCreated = { newExpense, category, subcategory in
+                    // Aqui você passa a transação para o ExpensesViewModel.
+                    // Adicionei 'category' e 'subcategory' como parâmetros extras no closure
+                    // para que o ExpensesViewModel possa fazer a validação com as instâncias gerenciadas.
+                    expensesViewModel.addExpense(newExpense)
                 }
             }
         }
@@ -138,7 +148,6 @@ struct PreviewWrapper: View {
         AddTransactionView(
             selectedSubcategory: $selectedSubcategory,
             selectedCategory: $selectedCategory
-            // Remova o parâmetro 'expensesViewModel' daqui!
         )
         .environmentObject(expensesViewModelForPreview) // <--- FORMA CORRETA DE INJETAR
     }

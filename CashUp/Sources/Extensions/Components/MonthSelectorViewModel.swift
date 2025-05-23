@@ -5,7 +5,6 @@
 //  Created by Gustavo Souto Pereira on 15/05/25.
 //
 
-import SwiftUI
 import Foundation
 
 class MonthSelectorViewModel: ObservableObject {

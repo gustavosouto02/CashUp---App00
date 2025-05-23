@@ -29,8 +29,6 @@ struct ExpensesView: View {
                     expense: viewModel.totalExpense()
                 )
 
-                // MARK: - Picker de tipo de transação (ainda não está em uso)
-                TransactionPicker(selectedTransactionType: $selectedTransactionType)
                 
                 ExpensesPorCategoriaListView(viewModel: viewModel)
                     .frame(height: 200) // Ajustável, se necessário
@@ -40,7 +38,7 @@ struct ExpensesView: View {
                                 
 
                 
-                Text("Extrato de Despesas")
+                Text("Extrato de Transações")
                     .font(.title3)
                     .fontWeight(.semibold)
                     .foregroundStyle(.primary)

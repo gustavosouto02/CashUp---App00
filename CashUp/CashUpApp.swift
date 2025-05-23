@@ -17,6 +17,7 @@ struct CashUpApp: App {
             HomeView()
                 .environmentObject(expensesViewModel)
                 .environmentObject(planningViewModel)
+                .preferredColorScheme(.dark)
         }
     }
 }

@@ -1,27 +1,32 @@
 //
-//  ExpensesPorCategoriaListView.swift
-//  CashUp
+//  ExpensesPorCategoriaListView.swift
+//  CashUp
 //
-//  Created by Gustavo Souto Pereira on 21/05/25.
+//  Created by Gustavo Souto Pereira on 21/05/25.
 //
 
 import SwiftUI
 
-// NOVO: Struct auxiliar para passar dados para a SubcategoryDetailView
 struct SubcategoryDetailSheetData: Identifiable {
-    let id = UUID() // Adiciona um ID único para conformar a Identifiable
+    let id = UUID()
     let subcategoria: Subcategoria
-    let categoryColor: Color
+    let isIncome: Bool // Certifique-se de que isso está sendo passado corretamente
 }
 
 struct ExpensesPorCategoriaListView: View {
     @ObservedObject var viewModel: ExpensesViewModel
+    @State private var selectedTransactionType: Int = 0 // O picker agora é gerenciado aqui
     @State private var expandedCategories: Set<UUID> = []
-    @State private var selectedSubcategoryData: SubcategoryDetailSheetData? = nil // Alterado para o novo tipo
+    @State private var selectedSubcategoryData: SubcategoryDetailSheetData? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Categorias principais")
+            // MARK: - Picker de tipo de transação (agora dentro do card)
+            TransactionPicker(selectedTransactionType: $selectedTransactionType)
+                .padding(.horizontal)
+                .padding(.top, 8)
+
+            Text(selectedTransactionType == 0 ? "Categorias principais de despesas" : "Categorias principais de receitas")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal)
@@ -29,7 +34,7 @@ struct ExpensesPorCategoriaListView: View {
 
             ScrollView {
                 LazyVStack(spacing: 12) {
-                    ForEach(categoriasComGasto, id: \.id) { categoria in
+                    ForEach(categoriasFiltradas, id: \.id) { categoria in
                         VStack(spacing: 0) {
                             // Card da categoria principal
                             Button {
@@ -40,13 +45,14 @@ struct ExpensesPorCategoriaListView: View {
                                         .fill(categoria.color)
                                         .frame(width: 6, height: 24)
                                         .cornerRadius(3)
-                                    
+
                                     Text(categoria.nome)
                                         .font(.subheadline)
                                         .fontWeight(.semibold)
 
                                     Spacer()
-                                    Text(formatCurrency(totalGastoCategoria(categoria)))
+                                    // Chama a função correta para o total
+                                    Text(formatCurrency(totalParaCategoria(categoria)))
                                         .font(.subheadline)
                                         .foregroundStyle(.primary)
 
@@ -62,26 +68,29 @@ struct ExpensesPorCategoriaListView: View {
                             }
                             .buttonStyle(.plain)
 
-                            // Subcategorias (expandidas)
                             if expandedCategories.contains(categoria.id) {
                                 VStack(spacing: 6) {
-                                    ForEach(subcategoriasDaCategoria(categoria), id: \.id) { sub in
+                                    // Usa as subcategorias filtradas
+                                    ForEach(subcategoriasParaCategoria(categoria), id: \.id) { sub in
                                         Button {
-                                            // NOVO: Criando uma instância da nova struct
-                                            selectedSubcategoryData = SubcategoryDetailSheetData(subcategoria: sub, categoryColor: categoria.color)
+                                            selectedSubcategoryData = SubcategoryDetailSheetData(
+                                                subcategoria: sub,
+                                                isIncome: selectedTransactionType == 1
+                                            )
                                         } label: {
                                             HStack {
                                                 Circle()
-                                                    .fill(categoria.color)
+                                                    .fill(categoria.color) // Still using categoria.color for the circle
                                                     .frame(width: 10, height: 10)
-                                                
+
                                                 Text(sub.nome)
                                                     .font(.subheadline)
 
                                                 Spacer()
-                                                Text(formatCurrency(totalGastoSubcategoria(sub)))
+                                                // Chama a função correta para o total
+                                                Text(formatCurrency(totalParaSubcategoria(sub)))
                                                     .foregroundStyle(.secondary)
-                                                
+
                                                 Image(systemName: "chevron.right")
                                                     .foregroundStyle(.secondary)
                                                     .font(.caption2)
@@ -103,34 +112,40 @@ struct ExpensesPorCategoriaListView: View {
             }
         }
         .sheet(item: $selectedSubcategoryData) { data in
-            SubcategoryDetailView(subcategoria: data.subcategoria, categoryColor: data.categoryColor, viewModel: viewModel)
+            SubcategoryDetailView(
+                subcategoria: data.subcategoria,
+                isIncome: data.isIncome,
+                viewModel: viewModel
+            )
         }
     }
 
-    // MARK: - Lógica
+    // MARK: - Lógica atualizada para usar selectedTransactionType
 
-    var categoriasComGasto: [Categoria] {
-        let despesas = viewModel.expensesDoMes.filter { !$0.isIncome }
-        let categorias = despesas.map { $0.category }
+    var categoriasFiltradas: [Categoria] {
+        let transactions = selectedTransactionType == 0 ? viewModel.despesasDoMes : viewModel.receitasDoMes
+        let categorias = transactions.map { $0.category }
         return Array(Set(categorias)).sorted { $0.nome < $1.nome }
     }
 
-    func subcategoriasDaCategoria(_ categoria: Categoria) -> [Subcategoria] {
-        let despesas = viewModel.expensesDoMes.filter { $0.category.id == categoria.id && !$0.isIncome }
-        let subcategorias = despesas.map { $0.subcategory }
+    func subcategoriasParaCategoria(_ categoria: Categoria) -> [Subcategoria] {
+        let transactions = selectedTransactionType == 0 ? viewModel.despesasDoMes : viewModel.receitasDoMes
+        let subcategorias = transactions.filter { $0.category.id == categoria.id }.map { $0.subcategory }
         return Array(Set(subcategorias)).sorted { $0.nome < $1.nome }
     }
 
-    func totalGastoCategoria(_ categoria: Categoria) -> Double {
-        viewModel.expensesDoMes
-            .filter { $0.category.id == categoria.id && !$0.isIncome }
+    func totalParaCategoria(_ categoria: Categoria) -> Double {
+        let transactions = selectedTransactionType == 0 ? viewModel.despesasDoMes : viewModel.receitasDoMes
+        return transactions
+            .filter { $0.category.id == categoria.id }
             .map { $0.amount }
             .reduce(0, +)
     }
 
-    func totalGastoSubcategoria(_ subcategoria: Subcategoria) -> Double {
-        viewModel.expensesDoMes
-            .filter { $0.subcategory.id == subcategoria.id && !$0.isIncome }
+    func totalParaSubcategoria(_ subcategoria: Subcategoria) -> Double {
+        let transactions = selectedTransactionType == 0 ? viewModel.despesasDoMes : viewModel.receitasDoMes
+        return transactions
+            .filter { $0.subcategory.id == subcategoria.id }
             .map { $0.amount }
             .reduce(0, +)
     }

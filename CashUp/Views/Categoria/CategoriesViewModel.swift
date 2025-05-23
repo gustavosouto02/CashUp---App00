@@ -6,7 +6,6 @@
 // Lista e filtros de categoria
 
 import Foundation
-import SwiftUI
 
 class CategoriesViewModel: ObservableObject {
     @Published var categorias: [Categoria] = CategoriasData.todas

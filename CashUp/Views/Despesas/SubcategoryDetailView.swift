@@ -1,8 +1,8 @@
 //
-//  SubcategoryDetailView.swift
-//  CashUp
+//  SubcategoryDetailView.swift
+//  CashUp
 //
-//  Created by Gustavo Souto Pereira on 21/05/25.
+//  Created by Gustavo Souto Pereira on 21/05/25.
 //
 
 import SwiftUI
@@ -16,14 +16,14 @@ struct ExpenseSection: Identifiable {
 
 struct SubcategoryDetailView: View {
     let subcategoria: Subcategoria
-    let categoryColor: Color // Adicionado para passar a cor da categoria
+    let isIncome: Bool
     @ObservedObject var viewModel: ExpensesViewModel
     @Environment(\.dismiss) var dismiss
     
     // Propriedade computada para gerar as seções da lista
     var sections: [ExpenseSection] {
         let filteredExpenses = viewModel.expensesDoMes.filter {
-            $0.subcategory.id == subcategoria.id
+            $0.subcategory.id == subcategoria.id && $0.isIncome == isIncome // Filtra por isIncome
         }
         
         let groupedByDate = Dictionary(grouping: filteredExpenses) { expense in
@@ -57,12 +57,8 @@ struct SubcategoryDetailView: View {
                                     // Linha de despesa
                                     HStack {
                                         // Ícone da subcategoria
-                                        Image(systemName: subcategoria.icon)
-                                            .resizable()
-                                            .scaledToFit()
-                                            .frame(width: 24, height: 24)
-                                            // Usa a cor da categoria da despesa
-                                            .foregroundStyle(expense.category.color)
+                                        CategoriasViewIcon(systemName: subcategoria.icon, cor: expense.category.color, size: 24)
+
                                         
                                         VStack(alignment: .leading) {
                                             // Mantendo a lógica original do VStack da descrição
@@ -112,4 +108,3 @@ struct SubcategoryDetailView: View {
         }
     }
 }
-

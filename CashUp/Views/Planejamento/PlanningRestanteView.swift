@@ -1,6 +1,10 @@
 import SwiftUI
+import Foundation // Necessário para Date, Calendar, etc.
 
 struct PlanningRestanteView: View {
+    @ObservedObject var planningViewModel: PlanningViewModel
+    @ObservedObject var expensesViewModel: ExpensesViewModel
+
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
 
@@ -11,34 +15,35 @@ struct PlanningRestanteView: View {
                     ZStack {
                         Circle()
                             .stroke(Color.gray.opacity(0.3), lineWidth: 12)
+
                         Circle()
-                            .trim(from: 0.0, to: 0.75)
+                            .trim(from: 0.0, to: CGFloat(metaResidualProgress())) // Progresso real
                             .stroke(
                                 LinearGradient(colors: [.green, .blue], startPoint: .top, endPoint: .bottom),
                                 style: StrokeStyle(lineWidth: 12, lineCap: .round)
                             )
                             .rotationEffect(.degrees(-90))
-                        Text("75%")
+                        Text("\(Int(metaResidualProgress() * 100))%") // Porcentagem real
                             .font(.caption)
                             .bold()
                     }
                     .frame(width: 100, height: 100)
-                    .padding(.leading, 24)
                     
 
                     VStack(alignment: .leading) {
-                        Text("Despesas Planejadas")
-                            .font(.headline)
-                            .padding(.bottom, 8)
-                        
-                        Text("R$ 100,00")
+                        Text("Restante do Planejamento")
+                            .font(.subheadline)
+                            .padding(.bottom, 2)
+
+                        Text(formatCurrency(totalRestanteDoPlanejamento()))
                             .font(.title)
                             .bold()
-                        
-                        Text("Restante da meta")
+                            .foregroundStyle(totalRestanteDoPlanejamento() < 0 ? .red : .primary)
+
+                        Text("Total Planejado: \(formatCurrency(planningViewModel.valorTotalPlanejado(categorias: planningViewModel.getCategoriasPlanejadasForCurrentMonth())))")
                             .font(.subheadline)
+                            .padding(.top, 8)
                     }
-                    .padding(.leading, 20)
 
                     Spacer()
                 }
@@ -48,51 +53,95 @@ struct PlanningRestanteView: View {
             .cornerRadius(12)
             .frame(maxWidth: .infinity)
 
-            // MARK: - Transporte
-            categoriaRestanteView(
-                titulo: "Transporte",
-                valorRestante: 50,
-                subcategorias: [
-                    ("Gasolina", "fuelpump.circle.fill", 150, 200),
-                    ("Manutenção", "wrench.adjustable.fill", 150, 150)
-                ]
-            )
+            // MARK: - Categorias de Planejamento Detalhadas
+            ForEach(planningViewModel.getCategoriasPlanejadasForCurrentMonth()) { categoriaPlanejada in
+                categoriaRestanteView(categoriaPlanejada: categoriaPlanejada)
+            }
 
-            Spacer(minLength: 100) 
+            Spacer(minLength: 100)
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
+        .onAppear {
+            expensesViewModel.currentMonth = planningViewModel.currentMonth
+        }
+        .onChange(of: planningViewModel.currentMonth) { _, newMonth in
+            // Reage a mudanças no mês do planningViewModel
+            expensesViewModel.currentMonth = newMonth
+        }
+    }
+
+    func totalRestanteDoPlanejamento() -> Double {
+        let categoriasPlanejadasMesAtual = planningViewModel.getCategoriasPlanejadasForCurrentMonth()
+        let totalPlanejado = planningViewModel.valorTotalPlanejado(categorias: categoriasPlanejadasMesAtual)
+
+        // Chama o cálculo do ExpensesViewModel
+        let totalGastoEmPlanejado = expensesViewModel.calcularTotalGastoEmCategoriasPlanejadas(
+            paraMes: expensesViewModel.currentMonth, // Usa o currentMonth do expensesViewModel
+            categoriasPlanejadas: categoriasPlanejadasMesAtual
+        )
+        return totalPlanejado - totalGastoEmPlanejado
+    }
+
+    func metaResidualProgress() -> Double {
+        let categoriasPlanejadasMesAtual = planningViewModel.getCategoriasPlanejadasForCurrentMonth()
+        let totalPlanejado = planningViewModel.valorTotalPlanejado(categorias: categoriasPlanejadasMesAtual)
+        guard totalPlanejado > 0 else { return 0.0 }
+
+        // Chama o cálculo do ExpensesViewModel
+        let totalGastoEmPlanejado = expensesViewModel.calcularTotalGastoEmCategoriasPlanejadas(
+            paraMes: expensesViewModel.currentMonth, // Usa o currentMonth do expensesViewModel
+            categoriasPlanejadas: categoriasPlanejadasMesAtual
+        )
+        // Se totalGastoEmPlanejado exceder totalPlanejado, o progresso é limitado a 1.0 (100%)
+        return min(totalGastoEmPlanejado / totalPlanejado, 1.0)
     }
 
     @ViewBuilder
-    func categoriaRestanteView(titulo: String, valorRestante: Double, subcategorias: [(String, String, Double, Double)]) -> some View {
+    func categoriaRestanteView(categoriaPlanejada: CategoriaPlanejada) -> some View {
+        let totalPlanejadoCategoria = planningViewModel.totalCategoria(categoria: categoriaPlanejada)
+
+        // Chama o cálculo do ExpensesViewModel
+        let totalGastoCategoria = expensesViewModel.calcularTotalGastoParaCategoria(
+            categoriaPlanejada,
+            paraMes: expensesViewModel.currentMonth // Usa o currentMonth do expensesViewModel
+        )
+        let restanteCategoria = totalPlanejadoCategoria - totalGastoCategoria
+
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text(titulo)
-                    .font(.title3)
-                    .bold()
+                // Ícone para a categoria principal
+                CategoriasViewIcon(systemName: categoriaPlanejada.categoria.icon, cor: categoriaPlanejada.categoria.color, size: 24)
+                Text(categoriaPlanejada.categoria.nome)
+                    .font(.headline)
                 Spacer()
-                Text("R$ \(valorRestante, specifier: "%.2f") restante")
-                    .foregroundStyle(.secondary)
+                Text("\(formatCurrency(restanteCategoria)) restante")
+                    .foregroundStyle(restanteCategoria < 0 ? .red : .secondary)
             }
 
-            ForEach(subcategorias.indices, id: \.self) { index in
-                let (nome, icone, valor, limite) = subcategorias[index]
-                let progresso = min(valor / limite, 1.0)
+            ForEach(categoriaPlanejada.subcategoriasPlanejadas, id: \.id) { (subPlanejada: SubcategoriaPlanejada) in
+                // Chama o cálculo do ExpensesViewModel
+                let gastoNaSub = expensesViewModel.calcularTotalGastoParaSubcategoria(
+                    subPlanejada,
+                    paraMes: expensesViewModel.currentMonth // Usa o currentMonth do expensesViewModel
+                )
+                let limiteDaSub = subPlanejada.valorPlanejado
+                let progresso = limiteDaSub > 0 ? min(gastoNaSub / limiteDaSub, 1.0) : 0.0
 
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
-                        Image(systemName: icone)
-                            .foregroundStyle(.purple)
-                            .font(.system(size: 24))
-                        Text(nome)
+                        CategoriasViewIcon(systemName: subPlanejada.subcategoria.icon, cor: categoriaPlanejada.categoria.color, size: 20)
+                        Text(subPlanejada.subcategoria.nome)
+                            .font(.headline)
+                
                         Spacer()
-                        Text("R$ \(valor, specifier: "%.2f") / \(limite, specifier: "%.2f")")
+                        Text("\(formatCurrency(gastoNaSub)) / \(formatCurrency(limiteDaSub))")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
+                    .padding(.leading)
 
                     ProgressView(value: progresso)
-                        .accentColor(progresso >= 1 ? .red : .blue)
+                        .accentColor(progresso >= 1 ? .red : categoriaPlanejada.categoria.color)
                 }
             }
         }
@@ -101,10 +150,21 @@ struct PlanningRestanteView: View {
         .cornerRadius(12)
         .frame(maxHeight: .infinity, alignment: .top)
     }
-}
 
+    func formatCurrency(_ value: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.locale = Locale(identifier: "pt_BR")
+        return formatter.string(from: NSNumber(value: value)) ?? "R$ 0,00"
+    }
+}
 
 #Preview {
-    PlanningRestanteView()
+    PlanningRestanteView(
+        planningViewModel: PlanningViewModel(),
+        expensesViewModel: ExpensesViewModel() // Passe uma instância aqui
+    )
+    // Se suas views filhas esperam EnvironmentObjects, ainda precisa injetar no preview
+    .environmentObject(ExpensesViewModel())
+    .environmentObject(PlanningViewModel())
 }
-

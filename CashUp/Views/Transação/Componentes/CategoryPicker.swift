@@ -41,6 +41,7 @@ struct CategoryPicker: View {
                 }
                 .padding(.vertical, 8)
             }
+            .buttonStyle(.plain)
 
             Divider()
         }

@@ -85,13 +85,6 @@ struct ExpensesListView: View {
         toDelete.forEach { viewModel.removeExpense($0) }
     }
     
-    func formatCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.locale = Locale(identifier: "pt_BR")
-        return formatter.string(from: NSNumber(value: value)) ?? "R$ 0,00"
-    }
-    
     func formattedDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "pt_BR")
@@ -134,13 +127,6 @@ struct ExpenseRow: View {
                 .fontWeight(.bold)
         }
         .padding(.vertical, 6)
-    }
-    
-    func formatCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.locale = Locale(identifier: "pt_BR")
-        return formatter.string(from: NSNumber(value: value)) ?? "R$ 0,00"
     }
 }
 

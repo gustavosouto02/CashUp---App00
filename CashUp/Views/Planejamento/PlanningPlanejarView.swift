@@ -71,7 +71,7 @@ struct PlanningPlanejarView: View {
                 Spacer()
             }
 
-            ForEach(viewModel.categoriasPlanejadas) { categoria in
+            ForEach(viewModel.getCategoriasPlanejadasForCurrentMonth()) { categoria in // Filter for current month
                 categoriaResumo(categoria)
             }
         }
@@ -115,7 +115,7 @@ struct PlanningPlanejarView: View {
     @ViewBuilder
     private func listaCategoriasPlanejadasView() -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            ForEach(viewModel.categoriasPlanejadas) { catItem in
+            ForEach(viewModel.getCategoriasPlanejadasForCurrentMonth()) { catItem in // Filter for current month
                 categoriaPlanejadaView(catItem)
             }
         }
@@ -125,6 +125,7 @@ struct PlanningPlanejarView: View {
     private func categoriaPlanejadaView(_ catItem: CategoriaPlanejada) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
+                // Assuming CategoriasViewIcon is a custom view you have defined
                 CategoriasViewIcon(systemName: catItem.categoria.icon, cor: catItem.categoria.color, size: 24)
                 Text(catItem.categoria.nome)
                     .font(.headline)
