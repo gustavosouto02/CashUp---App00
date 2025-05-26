@@ -71,7 +71,7 @@ struct PlanningPlanejarView: View {
                 Spacer()
             }
 
-            ForEach(viewModel.categoriasPlanejadas) { categoria in
+            ForEach(viewModel.getCategoriasPlanejadasForCurrentMonth()) { categoria in // Filter for current month
                 categoriaResumo(categoria)
             }
         }
@@ -88,6 +88,11 @@ struct PlanningPlanejarView: View {
 
         VStack(spacing: 4) {
             HStack {
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(categoria.categoria.color) // Usa a cor da categoria mestra
+                    .frame(width: 12, height: 12)
+                    .padding(.leading, 4) // Ajuste o espaçamento conforme necessário
+
                 Text(categoria.categoria.nome)
                     .font(.subheadline)
                     .lineLimit(1)
@@ -110,7 +115,7 @@ struct PlanningPlanejarView: View {
     @ViewBuilder
     private func listaCategoriasPlanejadasView() -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            ForEach(viewModel.categoriasPlanejadas) { catItem in
+            ForEach(viewModel.getCategoriasPlanejadasForCurrentMonth()) { catItem in // Filter for current month
                 categoriaPlanejadaView(catItem)
             }
         }
@@ -120,6 +125,7 @@ struct PlanningPlanejarView: View {
     private func categoriaPlanejadaView(_ catItem: CategoriaPlanejada) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
+                // Assuming CategoriasViewIcon is a custom view you have defined
                 CategoriasViewIcon(systemName: catItem.categoria.icon, cor: catItem.categoria.color, size: 24)
                 Text(catItem.categoria.nome)
                     .font(.headline)
@@ -155,7 +161,7 @@ struct PlanningPlanejarView: View {
                 }) {
                     HStack {
                         Image(systemName: "plus.circle.fill")
-                            .foregroundColor(.blue)
+                            .foregroundStyle(.blue)
                         Text("Adicionar Subcategoria")
                     }
                     .padding(.top, 4)
@@ -210,7 +216,7 @@ struct PlanningPlanejarView: View {
             Text("Subcategoria já adicionada")
                 .padding()
                 .background(Color.red.opacity(0.85))
-                .foregroundColor(.white)
+                .foregroundStyle(.white)
                 .cornerRadius(10)
                 .padding(.horizontal, 40)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -233,7 +239,7 @@ struct PlanningPlanejarView: View {
         }) {
             HStack {
                 Image(systemName: "plus.circle.fill")
-                    .foregroundColor(.blue)
+                    .foregroundStyle(.blue)
                 Text("Adicionar Categoria")
             }
             .frame(maxWidth: .infinity)

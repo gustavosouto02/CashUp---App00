@@ -15,6 +15,35 @@ struct SubcategoriaPlanejadaRowView: View {
     var isSelected: Bool
     var toggleSelection: () -> Void = {}
 
+    // MARK: - Local Binding for TextField
+    // This computed property creates a Binding<String> from the Binding<Double>
+    private var valorPlanejadoString: Binding<String> {
+        Binding<String>(
+            get: {
+                // Format the Double to a String for display in the TextField
+                let formatter = NumberFormatter()
+                formatter.numberStyle = .decimal // Use decimal style for user input
+                formatter.maximumFractionDigits = 2
+                formatter.minimumFractionDigits = 2
+                formatter.locale = Locale(identifier: "pt_BR") // Use Brazilian locale for comma decimal separator
+
+                // Return formatted string, or empty string if nil
+                return formatter.string(from: NSNumber(value: sub.valorPlanejado)) ?? ""
+            },
+            set: { newValueString in
+                // Clean the input string and convert it back to Double
+                let cleanedString = newValueString.replacingOccurrences(of: ",", with: ".") // Replace comma with dot for Double conversion
+                                                  .filter { "0123456789.".contains($0) } // Allow only numbers and a single dot
+
+                // Convert to Double, defaulting to 0.0 if conversion fails
+                let newDoubleValue = Double(cleanedString) ?? 0.0
+
+                // Update the original @Binding var sub.valorPlanejado
+                sub.valorPlanejado = newDoubleValue
+            }
+        )
+    }
+    
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 6) {
@@ -34,7 +63,7 @@ struct SubcategoriaPlanejadaRowView: View {
 
                 Spacer()
 
-                TextField("R$", text: $sub.valorPlanejado)
+                TextField("R$", text: valorPlanejadoString)
                     .keyboardType(.decimalPad)
                     .multilineTextAlignment(.trailing)
                     .frame(width: 80)
@@ -61,4 +90,3 @@ struct SubcategoriaPlanejadaRowView: View {
         }
     }
 }
-

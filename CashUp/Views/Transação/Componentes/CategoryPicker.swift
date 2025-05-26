@@ -23,24 +23,25 @@ struct CategoryPicker: View {
                         CategoriasViewIcon(systemName: sub.icon, cor: cat.color, size: 24)
                         Text(sub.nome)
                             .font(.title2)
-                            .foregroundColor(.primary)
+                            .foregroundStyle(.primary)
                     } else {
                         Image(systemName: "square.grid.2x2")
                             .resizable()
                             .frame(width: 24, height: 24)
-                            .foregroundColor(.primary)
+                            .foregroundStyle(.primary)
 
                         Text("Selecionar categoria")
                             .font(.title2)
-                            .foregroundColor(.primary)
+                            .foregroundStyle(.primary)
                     }
 
                     Spacer()
                     Image(systemName: "chevron.right")
-                        .foregroundColor(.gray)
+                        .foregroundStyle(.gray)
                 }
                 .padding(.vertical, 8)
             }
+            .buttonStyle(.plain)
 
             Divider()
         }

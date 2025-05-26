@@ -11,13 +11,13 @@ struct CategoriasViewIcon: View {
             Circle()
                 .fill(cor) // cor sólida, sem transparência
                 .frame(width: size * 1.4, height: size * 1.4)
-
             Image(systemName: systemName)
                 .font(.system(size: size * 0.6))
-                .foregroundColor(.white)
+                .foregroundStyle(.white)
         }
     }
 }
+
 #Preview {
     CategoriasViewIcon(systemName: "dollarsign.bank.building.fill", cor: .red, size: 24)
 }
@@ -78,8 +78,30 @@ struct CodableColor: Codable, Equatable, Hashable {
 
 // MARK: - CategoriasData (Mock)
 struct CategoriasData {
+    // Definindo IDs fixos para categorias e subcategorias
+    // ATENÇÃO: Se você já tem dados salvos, esses UUIDs precisam corresponder
+    // aos UUIDs que foram gerados e salvos para as categorias/subcategorias
+    // existentes no seu app. Caso contrário, você pode precisar "migrar" seus dados.
+
+    // MUITO IMPORTANTE: MUDANÇA AQUI!
+    // Usando '?? UUID()' para evitar crash se a string do UUID for inválida.
+    // O erro na linha 93 É MUITO PROVÁVEL QUE ESTEJA EM UMA DESSAS LINHAS ABAIXO
+    // OU NA LINHA 153 (Subcategoria de "Renda").
+    static let idRenda = UUID(uuidString: "A0A0A0A0-A0A0-A0A0-A0A0-A0A0A0A0A0A0") ?? UUID()
+    static let idEntretenimento = UUID(uuidString: "B1B1B1B1-B1B1-B1B1-B1B1-B1B1B1B1B1B1") ?? UUID()
+    static let idDiversos = UUID(uuidString: "C2C2C2C2-C2C2-C2C2-C2C2-C2C2C2C2C2C2") ?? UUID()
+    static let idComidasEBebidas = UUID(uuidString: "D3D3D3D3-D3D3-D3D3-D3D3-D3D3D3D3D3D3") ?? UUID()
+    static let idHabitacao = UUID(uuidString: "E4E4E4E4-E4E4-E4E4-E4E4-E4E4E4E4E4E4") ?? UUID()
+    static let idTransporte = UUID(uuidString: "F5F5F5F5-F5F5-F5F5-F5F5-F5F5F5F5F5F5") ?? UUID()
+    static let idEstiloDeVida = UUID(uuidString: "G6G6G6G6-G6G6-G6G6-G6G6-G6G6G6G6G6G6") ?? UUID()
+
+    // Subcategorias específicas
+    static let idAcademia = UUID(uuidString: "B6C7D8E9-F0A1-2B3C-4D5E-6F7A8B9C0D1E") ?? UUID()
+    static let idRendaSub = UUID(uuidString: "11111111-2222-3333-4444-555555555555") ?? UUID() // Usado na subcategoria "Renda" lá embaixo
+
     static let todas: [Categoria] = [
         Categoria(
+            id: idDiversos, // Usando ID fixo
             nome: "Diversos",
             cor: Color(red: 0.65, green: 0.45, blue: 0.25),
             icon: "puzzlepiece",
@@ -92,11 +114,12 @@ struct CategoriasData {
             ]
         ),
         Categoria(
+            id: idEntretenimento, // Usando ID fixo
             nome: "Entretenimento",
             cor: Color(red: 1.0, green: 0.39, blue: 0.51),
             icon: "gamecontroller",
             subcategorias: [
-                Subcategoria(nome: "Academia", icon: "dumbbell.fill"),
+                Subcategoria(id: idAcademia, nome: "Academia", icon: "dumbbell.fill"), // Usando ID fixo
                 Subcategoria(nome: "Assinatura", icon: "rectangle.stack.badge.play.fill"),
                 Subcategoria(nome: "Boate", icon: "party.popper.fill"),
                 Subcategoria(nome: "Boliche", icon: "figure.bowling"),
@@ -111,6 +134,7 @@ struct CategoriasData {
             ]
         ),
         Categoria(
+            id: idComidasEBebidas, // Usando ID fixo
             nome: "Comidas e Bebidas",
             cor: .teal,
             icon: "fork.knife",
@@ -125,6 +149,7 @@ struct CategoriasData {
             ]
         ),
         Categoria(
+            id: idHabitacao, // Usando ID fixo
             nome: "Habitação",
             cor: .orange,
             icon: "house",
@@ -148,6 +173,7 @@ struct CategoriasData {
             ]
         ),
         Categoria(
+            id: idTransporte, // Usando ID fixo
             nome: "Transporte",
             cor: Color(red: 0.75, green: 0.35, blue: 0.98),
             icon: "car",
@@ -165,6 +191,7 @@ struct CategoriasData {
             ]
         ),
         Categoria(
+            id: idEstiloDeVida, // Usando ID fixo
             nome: "Estilo de Vida",
             cor: Color(red: 0.85, green: 0.33, blue: 0.31),
             icon: "figure.wave",
@@ -187,6 +214,7 @@ struct CategoriasData {
             ]
         ),
         Categoria(
+            id: idRenda, // Usando ID fixo
             nome: "Renda",
             cor: Color(hue: 135/360, saturation: 0.8, brightness: 0.7),
             icon: "dollarsign",
@@ -194,10 +222,35 @@ struct CategoriasData {
                 Subcategoria(nome: "Investimentos", icon: "chart.line.uptrend.xyaxis"),
                 Subcategoria(nome: "Juros", icon: "percent"),
                 Subcategoria(nome: "Pensão", icon: "person.2.fill"),
-                Subcategoria(nome: "Renda", icon: "arrow.down.to.line.circle.fill"),
+                // MUITO IMPORTANTE: MUDANÇA AQUI!
+                // A linha 93 no seu Xcode pode ser esta Subcategoria se a contagem variar.
+                Subcategoria(id: UUID(uuidString: "11111111-2222-3333-4444-555555555555") ?? UUID(), nome: "Renda", icon: "arrow.down.to.line.circle.fill"),
                 Subcategoria(nome: "Salário", icon: "banknote"),
                 Subcategoria(nome: "Salário Família", icon: "house.and.flag.fill")
             ]
         )
     ]
+
+    // Funções auxiliares para buscar por ID
+    static func categoria(for id: UUID) -> Categoria? {
+        return todas.first(where: { $0.id == id })
+    }
+
+    static func subcategoria(for id: UUID) -> Subcategoria? {
+        for categoria in todas {
+            if let sub = categoria.subcategorias.first(where: { $0.id == id }) {
+                return sub
+            }
+        }
+        return nil
+    }
+
+    static func categoriasub(for subcategoriaID: UUID) -> Categoria? {
+        for categoria in todas {
+            if categoria.subcategorias.contains(where: { $0.id == subcategoriaID }) {
+                return categoria
+            }
+        }
+        return nil
+    }
 }

@@ -9,9 +9,15 @@ import SwiftUI
 
 @main
 struct CashUpApp: App {
+    @StateObject var expensesViewModel = ExpensesViewModel()
+    @StateObject var planningViewModel = PlanningViewModel()
+    
     var body: some Scene {
         WindowGroup {
             HomeView()
+                .environmentObject(expensesViewModel)
+                .environmentObject(planningViewModel)
+                .preferredColorScheme(.dark)
         }
     }
 }

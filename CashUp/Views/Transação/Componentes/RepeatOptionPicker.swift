@@ -1,6 +1,6 @@
 import SwiftUI
 
-enum RepeatOption: String, CaseIterable, Identifiable {
+enum RepeatOption: String, CaseIterable, Identifiable, Codable {
     case nunca = "Nunca"
     case diariamente = "Diariamente"
     case semanalmente = "Semanalmente"
@@ -26,21 +26,21 @@ struct RepeatOptionPicker: View {
                     HStack(spacing: 4) {
                         Label("Repetir", systemImage: "repeat")
                             .font(.title2)
-                            .foregroundColor(.primary)
+                            .foregroundStyle(.primary)
                         
                         Spacer()
                         
                         Image(systemName: "chevron.left")
                             .font(.caption)
-                            .foregroundColor(.blue)
+                            .foregroundStyle(.blue)
                         
                         Text(repeatOption.rawValue)
-                            .foregroundColor(.blue)
+                            .foregroundStyle(.blue)
                             .fontWeight(.semibold)
                         
                         Image(systemName: "chevron.right")
                             .font(.caption)
-                            .foregroundColor(.blue)
+                            .foregroundStyle(.blue)
                     }
                 }
             }
@@ -81,4 +81,9 @@ struct RepeatOptionPicker: View {
             }
         }
     }
+}
+
+struct Repetition: Codable, Equatable {
+    let repeatOption: RepeatOption
+    let endDate: Date?
 }

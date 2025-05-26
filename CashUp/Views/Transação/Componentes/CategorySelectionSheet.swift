@@ -16,15 +16,15 @@ struct CategorySelectionSheet: View {
 
     var body: some View {
         NavigationStack {
-            CategoriesView(viewModel: viewModel) { selectedName in
-                if let categoria = CategoriasData.todas.first(where: { cat in
-                    cat.subcategorias.contains(where: { $0.nome == selectedName })
-                }),
-                let sub = categoria.subcategorias.first(where: { $0.nome == selectedName }) {
+            CategoriesView(viewModel: viewModel) { selectedSub in
+                // Agora estamos recebendo diretamente uma Subcategoria
+                if let categoria = CategoriasData.todas.first(where: {
+                    $0.subcategorias.contains(where: { $0.id == selectedSub.id })
+                }) {
                     selectedCategory = categoria
-                    selectedSubcategory = sub
+                    selectedSubcategory = selectedSub
                 }
-                
+
                 withAnimation {
                     isPresented = false
                 }
@@ -42,4 +42,3 @@ struct CategorySelectionSheet: View {
         }
     }
 }
-
