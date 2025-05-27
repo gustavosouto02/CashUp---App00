@@ -5,6 +5,9 @@
 //  Created by Gustavo Souto Pereira on 19/05/25.
 //
 
+// Arquivo: CashUp/Views/Despesas/ExpensesResumoView.swift
+// Praticamente inalterado, pois já recebe valores. A fonte dos valores mudou no ViewModel.
+
 import SwiftUI
 
 struct ExpensesResumoView: View {
@@ -15,33 +18,44 @@ struct ExpensesResumoView: View {
     }
     
     private var saldoColor: Color {
-        income >= expense ? .green : .red
+        // Pequena correção: se income for igual a expense, pode ser primário ou verde.
+        // Se o saldo for negativo, vermelho.
+        if balance == 0 {
+            return .primary // ou .gray, .orange, etc.
+        }
+        return balance > 0 ? .green : .red
     }
     
     var body: some View {
         HStack{
-            resumoItem(value: income, label: "Renda", color: .primary)
+            resumoItem(value: income, label: "Renda", color: .green) // Cor explícita para renda
             Spacer()
-            resumoItem(value: expense, label: "Despesa", color: .primary)
+            resumoItem(value: expense, label: "Despesa", color: .red) // Cor explícita para despesa
             Spacer()
             resumoItem(value: balance, label: "Saldo", color: saldoColor)
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color(.secondarySystemBackground)) // Cor do sistema para adaptabilidade
         .cornerRadius(12)
     }
     
     private func resumoItem(value: Double, label: String, color: Color) -> some View {
         VStack(alignment: .center, spacing: 4) {
-            Text("R$ \(value, specifier: "%.2f")")
+            Text(formatCurrency(value)) // Sua func utilitária
                 .font(.title3)
                 .bold()
-                .foregroundStyle(color)
+                .foregroundStyle(color) // Usa a cor passada
             Text(label)
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
-        .frame(maxWidth: .infinity) // Distribui igualmente e centraliza
+        .frame(maxWidth: .infinity)
     }
 }
 
+// Preview para ExpensesResumoView (opcional, mas bom para design)
+#Preview {
+    ExpensesResumoView(income: 1500.75, expense: 850.50)
+        .padding()
+        .background(Color.gray.opacity(0.1))
+}

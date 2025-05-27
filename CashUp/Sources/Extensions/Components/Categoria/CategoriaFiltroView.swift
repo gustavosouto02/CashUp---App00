@@ -1,47 +1,42 @@
-//
-//  CategoriaFiltroView.swift
-//  CashUp
-//
-//  Created by Gustavo Souto Pereira on 13/05/25.
-//
+// Arquivo: CashUp/Sources/Extensions/Components/Categoria/CategoriaFiltroView.swift
+// Refatorado para SwiftData
 
 import SwiftUI
+import SwiftData
 
 struct CategoriaFiltroView: View {
-    var categorias: [Categoria]
-    // Mudar para UUID? para permitir nil (Todas)
-    @Binding var selectedCategoriaID: UUID?
-    var onSubcategoriaSelected: (Subcategoria) -> Void
+    // Recebe os modelos SwiftData
+    var categorias: [CategoriaModel]
+    @Binding var selectedCategoriaID: UUID? // ID da CategoriaModel selecionada para filtro
+    var onSubcategoriaSelected: (SubcategoriaModel) -> Void // Closure com SubcategoriaModel
     
-    var subcategoriasFrequentes: [Subcategoria] = []
+    var subcategoriasFrequentes: [SubcategoriaModel] // Já vem como [SubcategoriaModel] do ViewModel
     
     private let buttonSize: CGFloat = 70
     private let buttonCornerRadius: CGFloat = 12
     
-    // Botão para filtrar categoria
-    private func categoriaButton(categoria: Categoria) -> some View {
+    // Botão para filtrar categoria (agora usa CategoriaModel)
+    private func categoriaButton(categoriaModel: CategoriaModel) -> some View {
         Button(action: {
-            selectedCategoriaID = categoria.id
+            selectedCategoriaID = categoriaModel.id
         }) {
             VStack(spacing: 4) {
                 RoundedRectangle(cornerRadius: buttonCornerRadius)
-                    // Comparar pelo ID
-                    .fill(selectedCategoriaID == categoria.id ? categoria.cor.color.opacity(0.2) : Color.gray.opacity(0.15))
+                    .fill(selectedCategoriaID == categoriaModel.id ? categoriaModel.color.opacity(0.2) : Color.gray.opacity(0.15))
                     .frame(width: buttonSize, height: buttonSize)
                     .overlay(
-                        Image(systemName: categoria.icon)
+                        Image(systemName: categoriaModel.icon)
                             .font(.system(size: 24))
-                            // Comparar pelo ID
-                            .foregroundStyle(selectedCategoriaID == categoria.id ? categoria.cor.color : .gray)
+                            .foregroundStyle(selectedCategoriaID == categoriaModel.id ? categoriaModel.color : .gray)
                     )
                 
-                // Comparar pelo ID
-                if selectedCategoriaID == categoria.id {
-                    Text(categoria.nome)
+                if selectedCategoriaID == categoriaModel.id {
+                    Text(categoriaModel.nome)
                         .font(.caption2)
                         .foregroundStyle(.primary)
                         .multilineTextAlignment(.center)
-                        .lineLimit(1)
+                        .lineLimit(1) // Garante uma linha
+                        .truncationMode(.tail) // Adiciona "..." se o texto for muito longo
                         .frame(maxWidth: buttonSize)
                 }
             }
@@ -49,24 +44,31 @@ struct CategoriaFiltroView: View {
         .buttonStyle(PlainButtonStyle())
     }
     
-    // Card para subcategoria com ícone e nome
-    private func subcategoriaCard(categoria: Categoria, sub: Subcategoria) -> some View {
+    // Card para subcategoria (agora usa CategoriaModel e SubcategoriaModel)
+    private func subcategoriaCard(categoriaModel: CategoriaModel, subcategoriaModel: SubcategoriaModel) -> some View {
         VStack(spacing: 4) {
-            // A 'categoria' já é a categoria correta para esta subcategoria
-            CategoriasViewIcon(systemName: sub.icon, cor: categoria.cor.color, size: 30)
+            CategoriasViewIcon(
+                systemName: subcategoriaModel.icon,
+                cor: categoriaModel.color, // Cor da CategoriaModel pai
+                size: 30
+            )
 
-            Text(sub.nome)
+            Text(subcategoriaModel.nome)
                 .font(.footnote)
                 .foregroundStyle(.primary)
                 .multilineTextAlignment(.center)
-                .lineLimit(2)
-                .minimumScaleFactor(0.7)
-                .frame(height: 30)
-                .fixedSize(horizontal: false, vertical: true)
+                .lineLimit(2) // Permite até duas linhas
+                .minimumScaleFactor(0.7) // Reduz o tamanho da fonte se necessário
+                .frame(height: 30) // Altura fixa para alinhar
+                .fixedSize(horizontal: false, vertical: true) // Permite quebra de linha vertical
         }
-        .frame(maxWidth: .infinity, minHeight: 90)
+        .frame(maxWidth: .infinity, minHeight: 90) // Garante tamanho mínimo para toque
         .padding(8)
-        .background(Color.white.opacity(0.001)) // área clicável
+        .background(Color.white.opacity(0.001)) // Garante que toda a área seja clicável
+        .contentShape(Rectangle()) // Define a forma da área de toque
+        .onTapGesture {
+            onSubcategoriaSelected(subcategoriaModel)
+        }
     }
     
     var body: some View {
@@ -75,8 +77,7 @@ struct CategoriaFiltroView: View {
             // Seção "Mais Frequentes"
             VStack(alignment: .leading, spacing: 8) {
                 Text("Mais Frequentes")
-                    .font(.headline)
-                    .bold()
+                    .font(.headline.bold()) // Aplicado bold aqui
                     .padding(.horizontal, 12)
                     .padding(.top, 12)
                     .foregroundStyle(.primary)
@@ -87,40 +88,42 @@ struct CategoriaFiltroView: View {
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 12)
                         .padding(.bottom, 12)
-                        .frame(maxWidth: .infinity)
+                        .frame(maxWidth: .infinity, alignment: .center) // Centraliza o texto
                 } else {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 12) {
-                            ForEach(subcategoriasFrequentes) { sub in
-                                // CORREÇÃO AQUI: Use CategoriasData.categoriasub(for:) para encontrar a categoria pai da subcategoria
-                                let cor = CategoriasData.categoriasub(for: sub.id)?.cor.color ?? .gray
+                            ForEach(subcategoriasFrequentes) { subModel in
+                                // A cor da categoria pai é acessada através da relação
+                                let corCategoriaPai = subModel.categoria?.color ?? .gray
                                 
-                            
-
                                 VStack(spacing: 4) {
-                                    CategoriasViewIcon(systemName: sub.icon, cor: cor, size: 30)
+                                    CategoriasViewIcon(
+                                        systemName: subModel.icon,
+                                        cor: corCategoriaPai,
+                                        size: 30
+                                    )
 
-                                    Text(sub.nome)
+                                    Text(subModel.nome)
                                         .font(.footnote)
                                         .foregroundStyle(.primary)
                                         .multilineTextAlignment(.center)
                                         .lineLimit(1)
                                         .minimumScaleFactor(0.5)
-                                        .frame(height: 30)
+                                        .frame(width: 70, height: 30) // Largura fixa para o texto, altura para alinhar
                                         .fixedSize(horizontal: false, vertical: true)
                                 }
-                                .frame(width: 80)
+                                .frame(width: 80) // Largura total do item frequente
                                 .onTapGesture {
-                                    onSubcategoriaSelected(sub)
+                                    onSubcategoriaSelected(subModel)
                                 }
                             }
                         }
                         .padding(12)
-                        .animation(.easeInOut, value: subcategoriasFrequentes)
+                        .animation(.easeInOut, value: subcategoriasFrequentes.map { $0.id }) // Anima com base nos IDs
                     }
                 }
             }
-            .background(Color.gray.opacity(0.1))
+            .background(Color(.secondarySystemBackground)) // Cor de fundo do sistema
             .cornerRadius(12)
             .padding(.horizontal)
 
@@ -128,13 +131,12 @@ struct CategoriaFiltroView: View {
             // Filtro horizontal de categorias
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
-                    // Categoria "Todas" para resetar filtro
+                    // Botão "Todas"
                     Button(action: {
-                        selectedCategoriaID = nil // Define nil para "Todas"
+                        selectedCategoriaID = nil // Limpa o filtro
                     }) {
                         VStack(spacing: 4) {
                             RoundedRectangle(cornerRadius: buttonCornerRadius)
-                                // Comparar com nil para "Todas"
                                 .fill(selectedCategoriaID == nil ? Color.blue.opacity(0.2) : Color.gray.opacity(0.15))
                                 .frame(width: buttonSize, height: buttonSize)
                                 .overlay(
@@ -149,6 +151,7 @@ struct CategoriaFiltroView: View {
                                     .foregroundStyle(.primary)
                                     .multilineTextAlignment(.center)
                                     .lineLimit(1)
+                                    .truncationMode(.tail)
                                     .frame(maxWidth: buttonSize)
                             }
                         }
@@ -156,68 +159,50 @@ struct CategoriaFiltroView: View {
                     .buttonStyle(PlainButtonStyle())
                     
                     // Botões para todas as outras categorias
-                    ForEach(categorias) { categoria in
-                        categoriaButton(categoria: categoria)
+                    ForEach(categorias) { categoriaModel in // Itera sobre [CategoriaModel]
+                        categoriaButton(categoriaModel: categoriaModel)
                     }
                 }
                 .padding(.horizontal)
-                .animation(.easeInOut, value: selectedCategoriaID) // Animação com o ID
+                .animation(.easeInOut, value: selectedCategoriaID)
             }
             
-            // Exibição das categorias filtradas
-            ForEach(categorias.filter {
-                // Filtrar pelo ID, se houver um ID selecionado
-                selectedCategoriaID == nil || $0.id == selectedCategoriaID
-            }) { categoria in
+
+            let categoriasParaExibir = categorias.filter { categoriaModel in
+                selectedCategoriaID == nil || categoriaModel.id == selectedCategoriaID
+            }
+
+            ForEach(categoriasParaExibir) { categoriaModel in // Itera sobre as CategoriaModel filtradas
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(categoria.nome)
-                        .font(.title3)
+                    Text(categoriaModel.nome)
+                        .font(.title3.bold()) // Adicionado bold
                         .padding(.horizontal)
 
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 12)], spacing: 12) {
-                        ForEach(categoria.subcategorias) { sub in
-                            subcategoriaCard(categoria: categoria, sub: sub)
-                                .onTapGesture {
-                                    onSubcategoriaSelected(sub)
-                                }
+                    // Garante que `subcategorias` não é nil antes de tentar iterar
+                    if let subcategoriasDaCategoria = categoriaModel.subcategorias, !subcategoriasDaCategoria.isEmpty {
+                        // Ordena as subcategorias alfabeticamente para exibição consistente
+                        let subcategoriasOrdenadas = subcategoriasDaCategoria.sorted { $0.nome < $1.nome }
+                        
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 90, maximum: 100), spacing: 12)], spacing: 12) { // Ajustado minimum/maximum
+                            ForEach(subcategoriasOrdenadas) { subcategoriaModel in // Itera sobre [SubcategoriaModel]
+                                subcategoriaCard(categoriaModel: categoriaModel, subcategoriaModel: subcategoriaModel)
+                            }
                         }
+                        .padding(.horizontal) // Adiciona padding à grid
+                    } else {
+                        Text("Nenhuma subcategoria encontrada para \(categoriaModel.nome).")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal)
+                            .padding(.bottom, 8) // Espaço se não houver subcategorias
                     }
                 }
-                .padding()
-                .background(Color.gray.opacity(0.1))
+                .padding(.vertical) // Adiciona padding vertical à seção da categoria
+                .background(Color(.secondarySystemBackground)) // Cor de fundo do sistema
                 .cornerRadius(12)
-                .padding(.horizontal)
+                .padding(.horizontal) // Padding para o card da categoria inteira
+                .padding(.bottom, 8) // Espaçamento entre cards de categoria
             }
         }
-    }
-}
-
-struct CategoriaFiltroView_Previews: PreviewProvider {
-    struct Wrapper: View {
-        // Mudar para UUID? e inicializar com nil para "Todas"
-        @State private var categoriaSelecionadaID: UUID? = nil
-        
-        var body: some View {
-            CategoriaFiltroView(
-                categorias: CategoriasData.todas,
-                selectedCategoriaID: $categoriaSelecionadaID, // Passar o binding do ID
-                onSubcategoriaSelected: { sub in
-                    print("Subcategoria selecionada: \(sub.nome) (ID: \(sub.id))")
-                    if let cat = CategoriasData.categoriasub(for: sub.id) {
-                        print("Categoria pai: \(cat.nome) (ID: \(cat.id))")
-                    }
-                },
-                // Exemplo de como popular subcategoriasFrequentes para o preview
-                subcategoriasFrequentes: [
-                    CategoriasData.todas[0].subcategorias[0], // "Custos Bancários"
-                    CategoriasData.todas[1].subcategorias[0], // "Academia"
-                    CategoriasData.todas[2].subcategorias[1]  // "Café"
-                ]
-            )
-        }
-    }
-    
-    static var previews: some View {
-        Wrapper()
     }
 }

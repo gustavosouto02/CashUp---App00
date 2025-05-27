@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct DescriptionField: View {
-    @Binding var description: String
+    @Binding var expenseDescription: String
 
     var body: some View {
         HStack(spacing: 12) {
@@ -20,7 +20,7 @@ struct DescriptionField: View {
                     .resizable()
                     .frame(width: 24, height: 24)
             }
-            TextField("Opcional", text: $description)
+            TextField("Opcional", text: $expenseDescription)
                 .font(.headline)
                 .padding(.vertical, 8)
         }

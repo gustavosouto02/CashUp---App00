@@ -1,85 +1,74 @@
+// Arquivo: CashUp/Views/Home/HomeView.swift
+// Refatorado para SwiftData usando HomeViewModel corretamente
+
 import SwiftUI
+import SwiftData
 
 struct HomeView: View {
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.sizeCategory) var sizeCategory
-
-    // 1. Declare os StateObjects sem inicialização direta aqui
-    // Eles serão inicializados no 'init' da View
-    @StateObject private var planningVM: PlanningViewModel
-    @StateObject private var expensesVM: ExpensesViewModel
-
-    // 2. O HomeViewModel depende dos anteriores
-    @StateObject private var viewModel: HomeViewModel
-
+    
+    @StateObject private var homeViewModel: HomeViewModel
+    @StateObject private var expensesViewModel: ExpensesViewModel
+    
     @State private var isAddTransactionPresented = false
-
-    @State private var selectedSubcategory: Subcategoria? = nil
-    @State private var selectedCategory: Categoria? = nil
-
-    // 3. Inicializador customizado para injetar as dependências corretamente
-    init() {
-        // Inicializa os StateObjects "independentes" primeiro
-        let initialPlanningVM = PlanningViewModel()
-        let initialExpensesVM = ExpensesViewModel()
-
-        // Em seguida, inicializa o HomeViewModel, passando as instâncias criadas
-        let initialHomeViewModel = HomeViewModel(
-            planningViewModel: initialPlanningVM,
-            expensesViewModel: initialExpensesVM
+    
+    init(modelContext: ModelContext) {
+        let planningVM = PlanningViewModel(modelContext: modelContext)
+        let expensesVM = ExpensesViewModel(modelContext: modelContext)
+        let homeVM = HomeViewModel(
+            modelContext: modelContext,
+            planningViewModel: planningVM,
+            expensesViewModel: expensesVM
         )
-
-        // Atribui as instâncias aos StateObjects
-        _planningVM = StateObject(wrappedValue: initialPlanningVM)
-        _expensesVM = StateObject(wrappedValue: initialExpensesVM)
-        _viewModel = StateObject(wrappedValue: initialHomeViewModel)
+        _homeViewModel = StateObject(wrappedValue: homeVM)
+        _expensesViewModel = StateObject(wrappedValue: expensesVM)
     }
-
+    
     var body: some View {
+        let _ = Self._printChanges()
+        
         NavigationStack {
-            ZStack {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
-
-                        // MARK: - Seleção de Mês
-                        MonthSelector(
-                            viewModel: MonthSelectorViewModel(selectedMonth: viewModel.currentMonth),
-                            onMonthChanged: { selectedDate in
-                                viewModel.currentMonth = selectedDate // This will trigger the HomeViewModel to update
-                            }
-                        )
-
-                        // MARK: - Cartão 1: Gráfico de gastos
-                        miniChartCard
-
-                        // MARK: - Cartão 2: Planejamento
-                        planningCard
-
-                        // MARK: - Cartão 3: Despesas
-                        expensesCard
-                    }
-                    .padding()
-                    .overlay(
-                        Divider()
-                            .background(Color.gray)
-                            .frame(height: 1)
-                            .padding(.top, 2),
-                        alignment: .top
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    
+                    MonthSelector(
+                        viewModel: MonthSelectorViewModel(selectedMonth: homeViewModel.currentMonth),
+                        onMonthChanged: { selectedDate in
+                            homeViewModel.currentMonth = selectedDate.startOfMonth()
+                        }
                     )
+                    .padding(.horizontal)
+                    
+                    miniChartCard
+                        .padding(.horizontal)
+                    
+                    planningCard
+                        .padding(.horizontal)
+                    
+                    expensesCard
+                        .padding(.horizontal)
+                    
+                    ResumoDespesasCardView(categoriasResumo: homeViewModel.categoriasResumo)
+                        .padding(.horizontal)
+                    
+                    Spacer(minLength: 24)
                 }
+                .padding(.top)
             }
             .navigationTitle("Visão Geral")
             .toolbar {
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    Button(action: {
-                        // Action for info button
-                    }) {
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    Button {
+                        print("Botão de Informações tocado.")
+                    } label: {
                         Image(systemName: "info.circle.fill")
                             .font(.headline)
                     }
-
-                    Button(action: {
+                    
+                    Button {
                         isAddTransactionPresented = true
-                    }) {
+                    } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "plus.circle.fill")
                             Text("Registrar")
@@ -89,105 +78,187 @@ struct HomeView: View {
                 }
             }
             .fullScreenCover(isPresented: $isAddTransactionPresented) {
-                AddTransactionView(
-                    selectedSubcategory: $selectedSubcategory,
-                    selectedCategory: $selectedCategory
-                )
-                // É crucial passar o expensesVM aqui se AddTransactionView precisar dele
-                .environmentObject(expensesVM)
+                AddTransactionView()
+                    .environmentObject(homeViewModel.expensesViewModel)
             }
-            .onAppear() {
-                viewModel.loadHomeData(for: Date())
+            .onAppear {
+                Task {
+                    await popularDadosIniciaisSeNecessario(modelContext: modelContext)
+                }
+                homeViewModel.loadHomeData(for: homeViewModel.currentMonth)
             }
         }
     }
-
+    
     // MARK: - Mini Gráfico (Cartão 1)
     private var miniChartCard: some View {
-        RoundedRectangle(cornerRadius: 12)
-            .fill(Color.gray.opacity(0.2))
-            .frame(height: 200)
-            .overlay(
-                Text("Mini Gráfico")
-                    .foregroundStyle(.white)
-                    .font(.body)
-                // You can aadd logic here to display actual miniChart data from viewModel.miniChart
-            )
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Resumo Financeiro do Mês")
+                .font(.headline)
+            
+            if homeViewModel.totalSpentMonth > 0 || homeViewModel.totalIncomeMonth > 0 {
+                HStack(alignment: .center, spacing: 16) {
+                    VStack(alignment: .leading) {
+                        Text("Receitas:")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(homeViewModel.totalIncomeMonth, format: .currency(code: "BRL"))
+                            .font(.title3.bold())
+                            .foregroundStyle(.green)
+                    }
+                    Spacer()
+                    VStack(alignment: .leading) {
+                        Text("Despesas:")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(homeViewModel.totalSpentMonth, format: .currency(code: "BRL"))
+                            .font(.title3.bold())
+                            .foregroundStyle(.red)
+                    }
+                }
+                .padding(.top, 4)
+                
+                HStack(alignment: .bottom, spacing: 8) {
+                    let maxVal = max(homeViewModel.totalIncomeMonth, homeViewModel.totalSpentMonth, 1)
+                    
+                    BarView(value: homeViewModel.totalIncomeMonth, maxValue: maxVal, color: .green, label: "Receita")
+                    BarView(value: homeViewModel.totalSpentMonth, maxValue: maxVal, color: .red, label: "Despesa")
+                    if homeViewModel.totalIncomeMonth - homeViewModel.totalSpentMonth != 0 {
+                        BarView(value: abs(homeViewModel.totalIncomeMonth - homeViewModel.totalSpentMonth),
+                                maxValue: maxVal,
+                                color: (homeViewModel.totalIncomeMonth - homeViewModel.totalSpentMonth) > 0 ? .blue : .orange,
+                                label: (homeViewModel.totalIncomeMonth - homeViewModel.totalSpentMonth) > 0 ? "Saldo" : "Déficit")
+                    }
+                }
+                .frame(height: 100)
+                .padding(.top, 8)
+                
+            } else {
+                Text("Nenhuma transação registrada este mês para exibir resumo.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(height: 120, alignment: .center)
+            }
+        }
+        .padding()
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(12)
     }
-
+    
+    struct BarView: View {
+        let value: Double
+        let maxValue: Double
+        let color: Color
+        let label: String
+        
+        var body: some View {
+            VStack(spacing: 4) {
+                Rectangle()
+                    .fill(color)
+                    .frame(width: 50, height: max(10, (value / maxValue) * 80))
+                Text(label)
+                    .font(.caption2)
+                    .lineLimit(1)
+            }
+        }
+    }
+    
     // MARK: - Planejamento (Cartão 2)
     private var planningCard: some View {
-        NavigationLink(destination: PlanningView(viewModel: planningVM)) { // Use planningVM diretamente para PlanningView
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Planejamento")
+
+        NavigationLink {
+            PlanningView()
+                .environmentObject(homeViewModel.planningViewModel)
+                .environmentObject(homeViewModel.expensesViewModel)
+        } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Planejamento do Mês")
                     .font(.headline)
-                Text("Restante")
-                    .font(.caption)
-                    .foregroundStyle(.gray)
-
-                HStack {
-                    // Display either the remaining amount or the spent amount if over budget
-                    Text(viewModel.restanteDoPlanejamento < 0 ?
-                         viewModel.formatCurrency(viewModel.totalGastoEmPlanejado) :
-                         viewModel.formatCurrency(viewModel.restanteDoPlanejamento))
-                        .font(.title2)
-                        .bold()
-                        .foregroundStyle(viewModel.restanteDoPlanejamento < 0 ? .red : .primary)
-
-                    Text("/ \(viewModel.formatCurrency(viewModel.totalPlanejado))")
-                        .font(.title2)
+                
+                if homeViewModel.totalPlanejadoMes > 0 {  // corrigido para comparar valor
+                
+                    Text("Restante do Orçamento")
+                        .font(.caption)
                         .foregroundStyle(.secondary)
+                    
+                    HStack {
+                        Text(homeViewModel.totalRestantePlanejadoMes, format: .currency(code: "BRL"))
+                            .font(.title2.bold())
+                            .foregroundStyle(homeViewModel.totalRestantePlanejadoMes < 0 ? .red : .primary)
+                        
+                        Text("/ \(homeViewModel.totalPlanejadoMes, format: .currency(code: "BRL"))")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    
+                    ProgressView(value: homeViewModel.totalPlanejadoMes - homeViewModel.totalRestantePlanejadoMes,
+                                 total: homeViewModel.totalPlanejadoMes > 0 ? homeViewModel.totalPlanejadoMes : 1)
+                        .tint(homeViewModel.totalRestantePlanejadoMes < 0 ? .red : .green)
+
+
+                    
+                } else {
+                    Text("Nenhum planejamento definido para este mês.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(minHeight: 60, alignment: .center)
                 }
-                // ProgressView using actual spent and planned totals
-                ProgressView(value: viewModel.totalGastoEmPlanejado, total: viewModel.totalPlanejado == 0 ? 1 : viewModel.totalPlanejado)
-                    .accentColor(viewModel.restanteDoPlanejamento < 0 ? .red : .green) // Red if over budget, green otherwise
             }
             .padding()
-            .background(Color.gray.opacity(0.2))
+            .background(Color(.secondarySystemBackground))
             .cornerRadius(12)
-            .frame(minHeight: 150)
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, minHeight: 130)
         }
         .buttonStyle(PlainButtonStyle())
     }
 
+    
     // MARK: - Despesas (Cartão 3)
     private var expensesCard: some View {
-        NavigationLink(destination: ExpensesView().environmentObject(expensesVM)) {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Despesas")
+        NavigationLink {
+            ExpensesView()
+                .environmentObject(homeViewModel.expensesViewModel)
+        } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Despesas do Mês")
                     .font(.headline)
-                Text("Categorias principais")
-                    .font(.caption)
-                    .foregroundStyle(.gray)
-
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("🟪 Transporte - 50%") // This should be dynamic
-                        Text("🟦 Alimentação - 30%") // This should be dynamic
-                        Text("🟥 Lazer - 20%") // This should be dynamic
-                    }
-
-                    Spacer()
-
-                    Circle() // This circle should reflect expense distribution
-                        .trim(from: 0.0, to: 1.0)
-                        .stroke(LinearGradient(colors: [.purple, .blue, .pink], startPoint: .top, endPoint: .bottom), lineWidth: 12)
-                        .frame(width: 60, height: 60)
+                
+                if homeViewModel.totalSpentMonth > 0 {
+                    Text("Total Gasto:")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(homeViewModel.totalSpentMonth, format: .currency(code: "BRL"))
+                        .font(.title2.bold())
+                        .foregroundStyle(.red)
+                } else {
+                    Text("Nenhuma despesa registrada este mês.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(minHeight: 60, alignment: .center)
                 }
             }
             .padding()
-            .background(Color.gray.opacity(0.2))
+            .background(Color(.secondarySystemBackground))
             .cornerRadius(12)
+            .frame(maxWidth: .infinity, minHeight: 130)
         }
         .buttonStyle(PlainButtonStyle())
     }
 }
 
+// Preview para HomeView
 #Preview {
-    HomeView()
-        // O .environmentObject(ExpensesViewModel()) aqui é importante para que o Preview
-        // não falhe se ExpensesViewModel for um EnvironmentObject em alguma sub-view
-        // que o Preview tenta renderizar.
-        .environmentObject(ExpensesViewModel())
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: Schema([
+        CategoriaModel.self, SubcategoriaModel.self, ExpenseModel.self,
+        CategoriaPlanejadaModel.self, SubcategoriaPlanejadaModel.self
+    ]), configurations: [config])
+    let modelContext = container.mainContext
+
+    let catPrev = CategoriaModel(id: UUID(), nome: "Alimentação", icon: "fork.knife", color: .blue)
+    modelContext.insert(catPrev)
+    try? modelContext.save()
+
+    return HomeView(modelContext: modelContext)
+        .environment(\.modelContext, modelContext)
 }

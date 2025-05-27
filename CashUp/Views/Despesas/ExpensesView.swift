@@ -1,42 +1,35 @@
-//
-//  ExpensesView.swift
-//  CashUp
-//
-//  Created by Gustavo Souto Pereira on 08/05/25.
-//
+// Arquivo: CashUp/Views/Despesas/ExpensesView.swift
+// Refatorado para receber ViewModel via EnvironmentObject
 
 import SwiftUI
+import SwiftData
 
 struct ExpensesView: View {
     @EnvironmentObject var viewModel: ExpensesViewModel
-    @State private var selectedTransactionType: Int = 0
 
     var body: some View {
+        let _ = Self._printChanges() // Para depuração
+
         NavigationStack {
             VStack(alignment: .leading, spacing: 16) {
                 
-                // MARK: - Header: Navegação por mês
                 MonthSelector(
                     viewModel: MonthSelectorViewModel(selectedMonth: viewModel.currentMonth),
                     onMonthChanged: { selectedDate in
-                        viewModel.currentMonth = selectedDate
+                        viewModel.currentMonth = selectedDate.startOfMonth()
                     }
                 )
 
-                // MARK: - Resumo do mês
-                ExpensesResumoView(
-                    income: viewModel.totalIncome(),
-                    expense: viewModel.totalExpense()
+                ExpensesResumoView( //
+                                   income: viewModel.totalIncomeForCurrentMonth(),
+                                   expense: viewModel.totalExpenseForCurrentMonth()
                 )
-
                 
-                ExpensesPorCategoriaListView(viewModel: viewModel)
-                    .frame(height: 200) // Ajustável, se necessário
-                    .background(Color(.systemGray6)) // Define o fundo
-                    .cornerRadius(16) // Aplica o arredondamento de canto
-                    .frame(maxWidth: .infinity) // Garante que ocupe a largura total
-                                
-
+                ExpensesPorCategoriaListView(viewModel: viewModel) //
+                    .frame(height: 200)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(16)
+                    .frame(maxWidth: .infinity)
                 
                 Text("Extrato de Transações")
                     .font(.title3)
@@ -44,8 +37,7 @@ struct ExpensesView: View {
                     .foregroundStyle(.primary)
                     .padding(.horizontal, 8)
                 
-                // MARK: - Lista de despesas e rendas
-                ExpensesListView(viewModel: viewModel)
+                ExpensesListView(viewModel: viewModel) //
                     .background(Color(.systemGray6))
                     .cornerRadius(16)
             }
@@ -55,6 +47,7 @@ struct ExpensesView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(action: {
                         // ação para filtros
+                        print("Botão de Filtro de Despesas tocado.")
                     }) {
                         Image(systemName: "line.3.horizontal.decrease.circle")
                     }
@@ -65,7 +58,25 @@ struct ExpensesView: View {
 }
 
 #Preview {
-    ExpensesView()
-        .environmentObject(ExpensesViewModel())
-}
+    
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container: ModelContainer
+    do {
+        container = try ModelContainer(for: Schema([
+            CategoriaModel.self, SubcategoriaModel.self, ExpenseModel.self
+        ]), configurations: [config])
+        
+        let modelContext = container.mainContext
+        
+        // Criar ViewModel para o preview
+        let expensesVM = ExpensesViewModel(modelContext: modelContext)
+        expensesVM.currentMonth = Date().startOfMonth()
 
+        return ExpensesView()
+            .modelContainer(container) 
+            .environmentObject(expensesVM)
+
+    } catch {
+        return Text("Erro ao configurar preview para ExpensesView: \(error.localizedDescription)")
+    }
+}

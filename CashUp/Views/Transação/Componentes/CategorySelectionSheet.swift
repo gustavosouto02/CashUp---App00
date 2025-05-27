@@ -1,37 +1,43 @@
-//
-//  CategoriesSheet.swift
-//  CashUp
-//
-//  Created by Gustavo Souto Pereira on 13/05/25.
-//
+// Arquivo: CashUp/Views/Transação/Componentes/CategorySelectionSheet.swift
+// Refatorado para receber o CategoriesViewModel já configurado
 
 import SwiftUI
+import SwiftData
 
 struct CategorySelectionSheet: View {
-    @Binding var selectedSubcategory: Subcategoria?
+    @Binding var selectedSubcategoryModel: SubcategoriaModel?
     @Binding var isPresented: Bool
-    @Binding var selectedCategory: Categoria?
-    
-    @StateObject private var viewModel = CategoriesViewModel()
+    @Binding var selectedCategoryModel: CategoriaModel?
+    @ObservedObject var viewModel: CategoriesViewModel
+
+    // O init agora espera o ViewModel já configurado pela view que a chama.
+    init(viewModel: CategoriesViewModel,
+         selectedSubcategoryModel: Binding<SubcategoriaModel?>,
+         isPresented: Binding<Bool>,
+         selectedCategoryModel: Binding<CategoriaModel?>) {
+        
+        self.viewModel = viewModel
+        self._selectedSubcategoryModel = selectedSubcategoryModel
+        self._isPresented = isPresented
+        self._selectedCategoryModel = selectedCategoryModel
+    }
 
     var body: some View {
         NavigationStack {
-            CategoriesView(viewModel: viewModel) { selectedSub in
-                // Agora estamos recebendo diretamente uma Subcategoria
-                if let categoria = CategoriasData.todas.first(where: {
-                    $0.subcategorias.contains(where: { $0.id == selectedSub.id })
-                }) {
-                    selectedCategory = categoria
-                    selectedSubcategory = selectedSub
+            CategoriesView(
+                viewModel: viewModel,
+                onSubcategoriaModelSelected: { subcategoriaModelSelecionada in
+                    selectedSubcategoryModel = subcategoriaModelSelecionada
+                    selectedCategoryModel = subcategoriaModelSelecionada.categoria
+                    
+                    withAnimation {
+                        isPresented = false
+                    }
                 }
-
-                withAnimation {
-                    isPresented = false
-                }
-            }
+            )
             .navigationTitle("Categorias")
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancelar") {
                         withAnimation {
                             isPresented = false

@@ -1,154 +1,169 @@
-//
-//  ExpensesPorCategoriaListView.swift
-//  CashUp
-//
-//  Created by Gustavo Souto Pereira on 21/05/25.
-//
-
 import SwiftUI
+import SwiftData
 
-struct SubcategoryDetailSheetData: Identifiable {
+// Struct auxiliar para o sheet
+struct SubcategoryDetailSheetDataSwiftData: Identifiable {
     let id = UUID()
-    let subcategoria: Subcategoria
-    let isIncome: Bool // Certifique-se de que isso está sendo passado corretamente
+    let subcategoriaModel: SubcategoriaModel
+    let isIncome: Bool
 }
 
 struct ExpensesPorCategoriaListView: View {
     @ObservedObject var viewModel: ExpensesViewModel
-    @State private var selectedTransactionType: Int = 0 // O picker agora é gerenciado aqui
+
+    @State private var localSelectedTransactionType: Int = 0
     @State private var expandedCategories: Set<UUID> = []
-    @State private var selectedSubcategoryData: SubcategoryDetailSheetData? = nil
+    @State private var selectedSubcategoryDataForSheet: SubcategoryDetailSheetDataSwiftData? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // MARK: - Picker de tipo de transação (agora dentro do card)
-            TransactionPicker(selectedTransactionType: $selectedTransactionType)
+            TransactionPicker(selectedTransactionType: $localSelectedTransactionType)
                 .padding(.horizontal)
                 .padding(.top, 8)
+                .onChange(of: localSelectedTransactionType) { _, newValue in
+                    viewModel.selectedTransactionType = newValue
+                }
 
-            Text(selectedTransactionType == 0 ? "Categorias principais de despesas" : "Categorias principais de receitas")
+            Text(localSelectedTransactionType == 0 ? "Categorias principais de despesas" : "Categorias principais de receitas")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal)
                 .padding(.top)
 
             ScrollView {
-                LazyVStack(spacing: 12) {
-                    ForEach(categoriasFiltradas, id: \.id) { categoria in
-                        VStack(spacing: 0) {
-                            // Card da categoria principal
-                            Button {
-                                toggleCategory(categoria.id)
-                            } label: {
-                                HStack {
-                                    Rectangle()
-                                        .fill(categoria.color)
-                                        .frame(width: 6, height: 24)
-                                        .cornerRadius(3)
+                if categoriasFiltradas.isEmpty {
+                    Text("Nenhuma transação nesta categoria para o mês.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .padding()
+                        .frame(maxWidth: .infinity, alignment: .center)
+                } else {
+                    LazyVStack(spacing: 12) {
+                        ForEach(categoriasFiltradas, id: \.id) { categoriaModel in
+                            VStack(spacing: 0) {
+                                Button {
+                                    toggleCategory(categoriaModel.id)
+                                } label: {
+                                    HStack {
+                                        Rectangle()
+                                            .fill(categoriaModel.color)
+                                            .frame(width: 6, height: 24)
+                                            .cornerRadius(3)
 
-                                    Text(categoria.nome)
-                                        .font(.subheadline)
-                                        .fontWeight(.semibold)
+                                        Text(categoriaModel.nome)
+                                            .font(.subheadline)
+                                            .fontWeight(.semibold)
 
-                                    Spacer()
-                                    // Chama a função correta para o total
-                                    Text(formatCurrency(totalParaCategoria(categoria)))
-                                        .font(.subheadline)
-                                        .foregroundStyle(.primary)
+                                        Spacer()
 
-                                    Image(systemName: expandedCategories.contains(categoria.id) ? "chevron.down" : "chevron.right")
-                                        .foregroundStyle(.secondary)
-                                }
-                                .padding(.horizontal)
-                                .padding(.vertical, 10)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .fill(Color(.systemGray6))
-                                )
-                            }
-                            .buttonStyle(.plain)
+                                        Text(formatCurrency(totalParaCategoria(categoriaModel)))
+                                            .font(.subheadline)
+                                            .foregroundStyle(.primary)
 
-                            if expandedCategories.contains(categoria.id) {
-                                VStack(spacing: 6) {
-                                    // Usa as subcategorias filtradas
-                                    ForEach(subcategoriasParaCategoria(categoria), id: \.id) { sub in
-                                        Button {
-                                            selectedSubcategoryData = SubcategoryDetailSheetData(
-                                                subcategoria: sub,
-                                                isIncome: selectedTransactionType == 1
-                                            )
-                                        } label: {
-                                            HStack {
-                                                Circle()
-                                                    .fill(categoria.color) // Still using categoria.color for the circle
-                                                    .frame(width: 10, height: 10)
-
-                                                Text(sub.nome)
-                                                    .font(.subheadline)
-
-                                                Spacer()
-                                                // Chama a função correta para o total
-                                                Text(formatCurrency(totalParaSubcategoria(sub)))
-                                                    .foregroundStyle(.secondary)
-
-                                                Image(systemName: "chevron.right")
-                                                    .foregroundStyle(.secondary)
-                                                    .font(.caption2)
-                                            }
-                                            .frame(maxWidth: .infinity, alignment: .leading)
-                                            .padding(.horizontal)
-                                            .padding(.vertical, 8)
-                                            .contentShape(Rectangle())
-                                        }
-                                        .buttonStyle(.plain)
+                                        Image(systemName: expandedCategories.contains(categoriaModel.id) ? "chevron.down" : "chevron.right")
+                                            .foregroundStyle(.secondary)
                                     }
+                                    .padding(.horizontal)
+                                    .padding(.vertical, 10)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .fill(Color(.systemGray6))
+                                    )
                                 }
-                                .padding(.horizontal, 8)
-                                .padding(.bottom, 8)
+                                .buttonStyle(.plain)
+
+                                if expandedCategories.contains(categoriaModel.id) {
+                                    VStack(spacing: 6) {
+                                        ForEach(subcategoriasParaCategoria(categoriaModel), id: \.id) { subModel in
+                                            Button {
+                                                selectedSubcategoryDataForSheet = SubcategoryDetailSheetDataSwiftData(
+                                                    subcategoriaModel: subModel,
+                                                    isIncome: localSelectedTransactionType == 1
+                                                )
+                                            } label: {
+                                                HStack {
+                                                    Circle()
+                                                        .fill(categoriaModel.color)
+                                                        .frame(width: 10, height: 10)
+
+                                                    Text(subModel.nome)
+                                                        .font(.subheadline)
+
+                                                    Spacer()
+
+                                                    Text(formatCurrency(totalParaSubcategoria(subModel)))
+                                                        .foregroundStyle(.secondary)
+
+                                                    Image(systemName: "chevron.right")
+                                                        .foregroundStyle(.secondary)
+                                                        .font(.caption2)
+                                                }
+                                                .frame(maxWidth: .infinity, alignment: .leading)
+                                                .padding(.horizontal)
+                                                .padding(.vertical, 8)
+                                                .contentShape(Rectangle())
+                                            }
+                                            .buttonStyle(.plain)
+                                        }
+                                    }
+                                    .padding(.horizontal, 8)
+                                    .padding(.bottom, 8)
+                                }
                             }
                         }
                     }
+                    .padding(.vertical)
                 }
             }
         }
-        .sheet(item: $selectedSubcategoryData) { data in
+        .sheet(item: $selectedSubcategoryDataForSheet) { data in
             SubcategoryDetailView(
-                subcategoria: data.subcategoria,
+                subcategoriaModel: data.subcategoriaModel,
                 isIncome: data.isIncome,
                 viewModel: viewModel
             )
         }
+        .onAppear {
+            viewModel.selectedTransactionType = localSelectedTransactionType
+        }
     }
 
-    // MARK: - Lógica atualizada para usar selectedTransactionType
+    // MARK: - Lógica de Dados
 
-    var categoriasFiltradas: [Categoria] {
-        let transactions = selectedTransactionType == 0 ? viewModel.despesasDoMes : viewModel.receitasDoMes
-        let categorias = transactions.map { $0.category }
-        return Array(Set(categorias)).sorted { $0.nome < $1.nome }
+    private var transacoesRelevantes: [ExpenseModel] {
+        localSelectedTransactionType == 0
+            ? viewModel.expensesOnlyForCurrentMonth()
+            : viewModel.incomesOnlyForCurrentMonth()
     }
 
-    func subcategoriasParaCategoria(_ categoria: Categoria) -> [Subcategoria] {
-        let transactions = selectedTransactionType == 0 ? viewModel.despesasDoMes : viewModel.receitasDoMes
-        let subcategorias = transactions.filter { $0.category.id == categoria.id }.map { $0.subcategory }
-        return Array(Set(subcategorias)).sorted { $0.nome < $1.nome }
+    private var categoriasFiltradas: [CategoriaModel] {
+        let categoriasComNuloRemovido: [CategoriaModel] = transacoesRelevantes.compactMap { $0.categoria }
+        let categoriasUnicas: Set<CategoriaModel> = Set(categoriasComNuloRemovido)
+        let categoriasOrdenadas: [CategoriaModel] = categoriasUnicas.sorted { $0.nome < $1.nome }
+        return categoriasOrdenadas
     }
 
-    func totalParaCategoria(_ categoria: Categoria) -> Double {
-        let transactions = selectedTransactionType == 0 ? viewModel.despesasDoMes : viewModel.receitasDoMes
-        return transactions
-            .filter { $0.category.id == categoria.id }
+    func subcategoriasParaCategoria(_ categoriaModel: CategoriaModel) -> [SubcategoriaModel] {
+        let transacoes = transacoesRelevantes.filter { $0.categoria == categoriaModel }
+        let subcategorias = transacoes.compactMap { $0.subcategoria }
+        let subcategoriasUnicas = Set(subcategorias)
+        return Array(subcategoriasUnicas).sorted { $0.nome < $1.nome }
+    }
+
+    func totalParaCategoria(_ categoriaModel: CategoriaModel) -> Double {
+        transacoesRelevantes
+            .filter { $0.categoria == categoriaModel }
             .map { $0.amount }
             .reduce(0, +)
     }
 
-    func totalParaSubcategoria(_ subcategoria: Subcategoria) -> Double {
-        let transactions = selectedTransactionType == 0 ? viewModel.despesasDoMes : viewModel.receitasDoMes
-        return transactions
-            .filter { $0.subcategory.id == subcategoria.id }
+    func totalParaSubcategoria(_ subModel: SubcategoriaModel) -> Double {
+        transacoesRelevantes
+            .filter { $0.subcategoria == subModel }
             .map { $0.amount }
             .reduce(0, +)
     }
+
 
     func toggleCategory(_ id: UUID) {
         if expandedCategories.contains(id) {

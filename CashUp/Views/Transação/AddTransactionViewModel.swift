@@ -1,53 +1,48 @@
-//
-//  AddTransactionViewModel.swift
-//  CashUp
-//
-//  Created by Gustavo Souto Pereira on 09/05/25.
-// Lógica ao adicionar gasto/renda
+// Arquivo: CashUp/Views/Transação/AddTransactionViewModel.swift
 
 import Foundation
+import SwiftUI
+import SwiftData
 
 class AddTransactionViewModel: ObservableObject {
     @Published var selectedTransactionType: Int = 0 // 0: Despesa, 1: Receita
     @Published var amount: Double = 0.0
-    @Published var description: String = ""
+    @Published var expenseDescription: String = ""
     @Published var selectedDate: Date = Date()
     @Published var repeatOption: RepeatOption = .nunca
     @Published var repeatEndDate: Date? = nil
-    @Published var isRepeatDialogPresented: Bool = false // Controla a exibição do menu/modal
+    @Published var isRepeatDialogPresented: Bool = false
 
-    // MARK: - Closure para notificar a criação da transação
-    // Este closure será configurado pela View e chamará o método no ExpensesViewModel.
-    var onTransactionCreated: ((Expense, Categoria, Subcategoria) -> Void)?
+    var onTransactionCreated: ((
+        _ expenseModel: ExpenseModel,
+        _ categoriaModel: CategoriaModel,
+        _ subcategoriaModel: SubcategoriaModel
+    ) -> Void)?
 
-    // MARK: - Currency Formatter otimizado com lazy var
     private lazy var currencyFormatter: NumberFormatter = {
         let f = NumberFormatter()
         f.numberStyle = .currency
-        f.locale = Locale.current // Usa a localização atual do usuário
+        f.locale = Locale(identifier: "pt_BR")
         f.maximumFractionDigits = 2
-        f.minimumFractionDigits = 0
+        f.minimumFractionDigits = 2
         return f
     }()
 
     func formattedAmount() -> String {
-        currencyFormatter.string(from: NSNumber(value: amount)) ?? "0"
+        currencyFormatter.string(from: NSNumber(value: amount)) ?? currencyFormatter.string(from: NSNumber(value: 0.0))!
     }
 
     func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .none
-
+        formatter.locale = Locale(identifier: "pt_BR")
         let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
-        let selectedDateStart = calendar.startOfDay(for: date)
-
-        if selectedDateStart == today {
+        if calendar.isDateInToday(date) {
             return "Hoje"
-        } else if selectedDateStart == calendar.date(byAdding: .day, value: -1, to: today) {
+        } else if calendar.isDateInYesterday(date) {
             return "Ontem"
         } else {
+            formatter.dateStyle = .medium
+            formatter.timeStyle = .none
             return formatter.string(from: date)
         }
     }
@@ -58,44 +53,84 @@ class AddTransactionViewModel: ObservableObject {
 
     func setRepeatOption(_ option: RepeatOption) {
         repeatOption = option
+        if option == .nunca {
+            repeatEndDate = nil
+        }
     }
 
-    func criarTransacao(
-        categoria: Categoria?,
-        subcategoria: Subcategoria?
+
+    func criarTransacaoEChamarClosure(
+        categoriaModelApp: CategoriaModel?,
+        subcategoriaModelApp: SubcategoriaModel?,
+        modelContext: ModelContext
     ) -> Bool {
-        guard let selectedCategoria = categoria,
-              let selectedSubcategoria = subcategoria,
+        
+        guard let selectedCategoriaModel = categoriaModelApp,
+              let selectedSubcategoriaModel = subcategoriaModelApp,
               amount > 0 else {
-            return false // Validação básica
+            print("Validação falhou: CategoriaModel, SubcategoriaModel ou Valor ausente/inválido.")
+            return false
         }
 
-        // Não mais tentando encontrar a categoria gerenciada aqui.
-        // Essa validação será feita pelo ExpensesViewModel quando ele receber a transação.
+        let categoriaID = selectedCategoriaModel.id
+        let categoriaPredicate: Predicate<CategoriaModel> = #Predicate { categoria in
+            categoria.id == categoriaID
+        }
 
-        let repetition = Repetition(repeatOption: repeatOption, endDate: repeatEndDate)
 
-        let novaTransacao = Expense(
-            id: UUID(),
+        guard let categoriaPersistida = try? modelContext.fetch(
+            FetchDescriptor<CategoriaModel>(predicate: categoriaPredicate)
+        ).first else {
+            print("Falha ao buscar categoria persistida.")
+            return false
+        }
+
+
+        let subcategoriaID = selectedSubcategoriaModel.id
+        let subcategoriaPredicate: Predicate<SubcategoriaModel> = #Predicate { subcategoria in
+            subcategoria.id == subcategoriaID
+        }
+
+
+        guard let subcategoriaPersistida = try? modelContext.fetch(
+            FetchDescriptor<SubcategoriaModel>(predicate: subcategoriaPredicate)
+        ).first else {
+            print("Falha ao buscar subcategoria persistida.")
+            return false
+        }
+
+
+
+        let isRenda = categoriaPersistida.id == SeedIDs.idRenda
+        let isIncome = isRenda || selectedTransactionType == 1
+
+        let repetitionDataPayload: RepetitionData?
+        if repeatOption != .nunca {
+            repetitionDataPayload = RepetitionData(repeatOption: repeatOption, endDate: repeatEndDate)
+        } else {
+            repetitionDataPayload = nil
+        }
+
+        let novaExpenseModel = ExpenseModel(
             amount: amount,
             date: selectedDate,
-            category: selectedCategoria, // Usa a categoria selecionada diretamente
-            subcategory: selectedSubcategoria, // Usa a subcategoria selecionada diretamente
-            description: description,
-            isIncome: selectedTransactionType == 1,
-            repetition: repetition
+            expenseDescription: self.expenseDescription,
+            isIncome: isIncome,
+            repetition: repetitionDataPayload,
+            categoria: categoriaPersistida,
+            subcategoria: subcategoriaPersistida
         )
 
-        // Chama o closure para que a View (ou quem o configurou) possa lidar com a transação
-        onTransactionCreated?(novaTransacao, selectedCategoria, selectedSubcategoria)
+        onTransactionCreated?(novaExpenseModel, categoriaPersistida, subcategoriaPersistida)
 
         resetFields()
         return true
     }
 
+
     func resetFields() {
-        amount = 0
-        description = ""
+        amount = 0.0
+        expenseDescription = ""
         selectedDate = Date()
         repeatOption = .nunca
         repeatEndDate = nil

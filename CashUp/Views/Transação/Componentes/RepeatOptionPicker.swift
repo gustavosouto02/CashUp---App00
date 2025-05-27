@@ -82,8 +82,3 @@ struct RepeatOptionPicker: View {
         }
     }
 }
-
-struct Repetition: Codable, Equatable {
-    let repeatOption: RepeatOption
-    let endDate: Date?
-}
