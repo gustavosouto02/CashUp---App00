@@ -60,27 +60,35 @@ class ExpensesViewModel: ObservableObject, ExpenseCalculation {
     func addExpense(expenseData: ExpenseModel,
                     categoriaModel: CategoriaModel,
                     subcategoriaModel: SubcategoriaModel) {
-        
         guard expenseData.categoria?.id == categoriaModel.id,
               expenseData.subcategoria?.id == subcategoriaModel.id else {
             print("Erro: Inconsistência entre expenseData e os modelos fornecidos.")
             return
         }
-        
+
         modelContext.insert(expenseData)
-        
+
         print("ExpenseModel inserido com ID: \(expenseData.id), Desc: \(expenseData.expenseDescription)")
-        
+
         do {
             try modelContext.save()
             print("Contexto salvo após adicionar despesa.")
+            // Avisar que mudou
+            objectWillChange.send()
         } catch {
             print("Erro ao salvar contexto após adicionar despesa: \(error.localizedDescription)")
         }
     }
+
     
     func removeExpense(_ expenseModel: ExpenseModel) {
         modelContext.delete(expenseModel)
+        do {
+            try modelContext.save()
+            objectWillChange.send()
+        } catch {
+            print("Erro ao salvar contexto após remover despesa: \(error.localizedDescription)")
+        }
     }
     
     // MARK: - Utilitários de Busca

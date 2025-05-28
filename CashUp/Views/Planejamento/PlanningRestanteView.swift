@@ -16,7 +16,7 @@ struct PlanningRestanteView: View {
 
     var body: some View {
         ScrollView { // Adicionado ScrollView para conteúdo que pode exceder
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: 20) {
 
                 // MARK: - Meta Residual
                 metaResidualCard()
@@ -36,10 +36,8 @@ struct PlanningRestanteView: View {
                 }
                 Spacer(minLength: 24) // Adicionado Spacer para garantir espaço no final
             }
-            .padding() // Adicionado padding ao VStack principal
+            .padding(.horizontal) // Adicionado padding ao VStack principal
         }
-        // A sincronização de currentMonth entre PlanningViewModel e ExpensesViewModel
-        // deve ser gerenciada pela View pai (PlanningView).
     }
 
     @ViewBuilder
@@ -90,7 +88,7 @@ struct PlanningRestanteView: View {
                         .foregroundStyle(restante < 0 ? .red : .primary)
 
                     Text("Total Planejado: \(formatCurrency(totalPlanejado))") //
-                        .font(.caption)
+                        .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .padding(.top, 4)
                 }
@@ -105,14 +103,11 @@ struct PlanningRestanteView: View {
 
     @ViewBuilder
     func categoriaRestanteView(categoriaPModel: CategoriaPlanejadaModel) -> some View {
-        // Total planejado para esta CategoriaPlanejadaModel
         let totalPlanejadoCategoria = planningViewModel.totalParaCategoriaPlanejada(categoriaPModel)
 
-        // Total gasto nesta CategoriaPlanejadaModel
-        // A função em ExpensesViewModel agora espera CategoriaPlanejadaModel
         let totalGastoCategoria = expensesViewModel.calcularTotalGastoParaCategoria(
             categoriaPModel,
-            paraMes: planningViewModel.currentMonth // Usa o currentMonth do planningViewModel
+            paraMes: planningViewModel.currentMonth
         )
         let restanteCategoria = totalPlanejadoCategoria - totalGastoCategoria
 
@@ -126,40 +121,37 @@ struct PlanningRestanteView: View {
                 Text(categoriaPModel.nomeCategoriaOriginal)
                     .font(.headline)
                 Spacer()
-                Text("\(formatCurrency(restanteCategoria)) restante") //
+                Text("\(formatCurrency(restanteCategoria)) restante")
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(restanteCategoria < 0 ? .red : .secondary)
             }
 
-            // Itera sobre as SubcategoriaPlanejadaModel
             if let subcategoriasPlanejadas = categoriaPModel.subcategoriasPlanejadas, !subcategoriasPlanejadas.isEmpty {
                 ForEach(subcategoriasPlanejadas.sorted(by: { $0.subcategoriaOriginal?.nome ?? "" < $1.subcategoriaOriginal?.nome ?? "" })) { subPlanModel in
-                    // Gasto na SubcategoriaPlanejadaModel
-                    // A função em ExpensesViewModel agora espera SubcategoriaPlanejadaModel
                     let gastoNaSub = expensesViewModel.calcularTotalGastoParaSubcategoria(
                         subPlanModel,
-                        paraMes: planningViewModel.currentMonth // Usa o currentMonth do planningViewModel
+                        paraMes: planningViewModel.currentMonth
                     )
                     let limiteDaSub = subPlanModel.valorPlanejado
                     let progressoSub = limiteDaSub > 0 ? min(abs(gastoNaSub / limiteDaSub), 1.0) : 0.0
-                    // Corrigido para abs() para garantir que progresso não seja negativo
 
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
                             CategoriasViewIcon( //
                                 systemName: subPlanModel.iconSubcategoriaOriginal,
                                 cor: categoriaPModel.corCategoriaOriginal, // Cor da categoria pai
-                                size: 18
+                                size: 20
                             )
                             Text(subPlanModel.nomeSubcategoriaOriginal)
-                                .font(.subheadline)
+                                .font(.headline)
                     
                             Spacer()
                             Text("\(formatCurrency(gastoNaSub)) / \(formatCurrency(limiteDaSub))") //
-                                .font(.caption)
+                                .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
                         .padding(.leading, 8)
+                        .padding(.bottom, 4)
 
                         ProgressView(value: progressoSub)
                             .tint(gastoNaSub > limiteDaSub ? .red : categoriaPModel.corCategoriaOriginal) // Vermelho se estourou

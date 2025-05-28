@@ -1,8 +1,10 @@
 // Arquivo: CashUp/Views/Home/HomeView.swift
 // Refatorado para SwiftData usando HomeViewModel corretamente
+// Padding de todos os cards ajustado para consistência com o miniChartCard
 
 import SwiftUI
 import SwiftData
+import Charts
 
 struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
@@ -46,10 +48,7 @@ struct HomeView: View {
                     planningCard
                         .padding(.horizontal)
                     
-                    expensesCard
-                        .padding(.horizontal)
-                    
-                    ResumoDespesasCardView(categoriasResumo: homeViewModel.categoriasResumo)
+                    expensesSummaryCombinedCard
                         .padding(.horizontal)
                     
                     Spacer(minLength: 24)
@@ -90,93 +89,47 @@ struct HomeView: View {
         }
     }
     
-    // MARK: - Mini Gráfico (Cartão 1)
+    // MARK: - Mini Gráfico (Cartão 1) - Gráfico Interativo de Despesas Diárias
     private var miniChartCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Resumo Financeiro do Mês")
+        VStack(alignment: .leading) {
+            Text("Gastos do Mês")
                 .font(.headline)
             
-            if homeViewModel.totalSpentMonth > 0 || homeViewModel.totalIncomeMonth > 0 {
-                HStack(alignment: .center, spacing: 16) {
-                    VStack(alignment: .leading) {
-                        Text("Receitas:")
-                            .font(.caption)
+            if !homeViewModel.dailyExpenseChartData.isEmpty && homeViewModel.dailyExpenseChartData.contains(where: { $0.totalExpenses > 0 }) {
+                InteractiveDailyExpensesChart(dailyData: homeViewModel.dailyExpenseChartData)
+                    .frame(height: 150)
+            } else {
+                HStack{
+                    VStack(alignment: .leading){
+                        Text("Nenhuma transação neste mês")
+                            .font(.subheadline)
                             .foregroundStyle(.secondary)
-                        Text(homeViewModel.totalIncomeMonth, format: .currency(code: "BRL"))
-                            .font(.title3.bold())
-                            .foregroundStyle(.green)
+                        Spacer()
                     }
                     Spacer()
-                    VStack(alignment: .leading) {
-                        Text("Despesas:")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Text(homeViewModel.totalSpentMonth, format: .currency(code: "BRL"))
-                            .font(.title3.bold())
-                            .foregroundStyle(.red)
-                    }
+                    Spacer()
                 }
-                .padding(.top, 4)
-                
-                HStack(alignment: .bottom, spacing: 8) {
-                    let maxVal = max(homeViewModel.totalIncomeMonth, homeViewModel.totalSpentMonth, 1)
-                    
-                    BarView(value: homeViewModel.totalIncomeMonth, maxValue: maxVal, color: .green, label: "Receita")
-                    BarView(value: homeViewModel.totalSpentMonth, maxValue: maxVal, color: .red, label: "Despesa")
-                    if homeViewModel.totalIncomeMonth - homeViewModel.totalSpentMonth != 0 {
-                        BarView(value: abs(homeViewModel.totalIncomeMonth - homeViewModel.totalSpentMonth),
-                                maxValue: maxVal,
-                                color: (homeViewModel.totalIncomeMonth - homeViewModel.totalSpentMonth) > 0 ? .blue : .orange,
-                                label: (homeViewModel.totalIncomeMonth - homeViewModel.totalSpentMonth) > 0 ? "Saldo" : "Déficit")
-                    }
-                }
-                .frame(height: 100)
-                .padding(.top, 8)
-                
-            } else {
-                Text("Nenhuma transação registrada este mês para exibir resumo.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .frame(height: 120, alignment: .center)
             }
         }
         .padding()
+        .frame(maxWidth: .infinity, minHeight: 150)
         .background(Color(.secondarySystemBackground))
         .cornerRadius(12)
     }
     
-    struct BarView: View {
-        let value: Double
-        let maxValue: Double
-        let color: Color
-        let label: String
-        
-        var body: some View {
-            VStack(spacing: 4) {
-                Rectangle()
-                    .fill(color)
-                    .frame(width: 50, height: max(10, (value / maxValue) * 80))
-                Text(label)
-                    .font(.caption2)
-                    .lineLimit(1)
-            }
-        }
-    }
-    
-    // MARK: - Planejamento (Cartão 2)
+    // MARK: - Planejamento (Cartão 2) - Estilo Ajustado para corresponder ao Despesas Card (com espaço vertical)
     private var planningCard: some View {
-
         NavigationLink {
             PlanningView()
                 .environmentObject(homeViewModel.planningViewModel)
                 .environmentObject(homeViewModel.expensesViewModel)
         } label: {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Planejamento do Mês")
-                    .font(.headline)
-                
-                if homeViewModel.totalPlanejadoMes > 0 {  // corrigido para comparar valor
-                
+            VStack(alignment: .leading) { // This is the card's content view
+                if homeViewModel.totalPlanejadoMes > 0 {
+                    Text("Planejamento do Mês")
+                        .font(.headline)
+                    
+                    Spacer()
                     Text("Restante do Orçamento")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -185,67 +138,138 @@ struct HomeView: View {
                         Text(homeViewModel.totalRestantePlanejadoMes, format: .currency(code: "BRL"))
                             .font(.title2.bold())
                             .foregroundStyle(homeViewModel.totalRestantePlanejadoMes < 0 ? .red : .primary)
-                        
                         Text("/ \(homeViewModel.totalPlanejadoMes, format: .currency(code: "BRL"))")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
-                    
+                    .padding(.top, 8)
                     ProgressView(value: homeViewModel.totalPlanejadoMes - homeViewModel.totalRestantePlanejadoMes,
                                  total: homeViewModel.totalPlanejadoMes > 0 ? homeViewModel.totalPlanejadoMes : 1)
-                        .tint(homeViewModel.totalRestantePlanejadoMes < 0 ? .red : .green)
-
-
-                    
+                    .tint(homeViewModel.totalRestantePlanejadoMes < 0 ? .red : .blue)
                 } else {
-                    Text("Nenhum planejamento definido para este mês.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .frame(minHeight: 60, alignment: .center)
+                    HStack{
+                        VStack(alignment: .leading){
+                            Text("Planejamento do Mês")
+                                .font(.headline)
+                            Text("Nenhum planejamento definido para este mês.")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                        }
+                        Spacer()
+                        
+                    }
                 }
             }
-            .padding()
-            .background(Color(.secondarySystemBackground))
-            .cornerRadius(12)
-            .frame(maxWidth: .infinity, minHeight: 130)
+            .padding() // 1. Inner padding
+            .frame(maxWidth: .infinity, minHeight: 150)
+            .background(Color(.secondarySystemBackground)) // 3. Background
+            .cornerRadius(12) // 4. Corner radius
         }
         .buttonStyle(PlainButtonStyle())
     }
-
     
-    // MARK: - Despesas (Cartão 3)
-    private var expensesCard: some View {
+    // MARK: - Despesas e Resumo Combinados (Novo Layout) - Estilo Ajustado
+    private var expensesSummaryCombinedCard: some View {
         NavigationLink {
             ExpensesView()
                 .environmentObject(homeViewModel.expensesViewModel)
         } label: {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Despesas do Mês")
-                    .font(.headline)
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Despesas do Mês")
+                        .font(.headline)
+                        .padding(.bottom, 2)
+                    
+                    if homeViewModel.totalSpentMonth > 0 {
+                        Text("Total Gasto:")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(homeViewModel.totalSpentMonth, format: .currency(code: "BRL"))
+                            .font(.title.bold())
+                            .padding(.bottom, 6)
+                        
+                        if !homeViewModel.categoriasResumo.isEmpty {
+                            Text("Categorias Principais")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                                .padding(.bottom, 2)
+                            ForEach(homeViewModel.categoriasResumo.prefix(3)) { item in
+                                HStack(spacing: 6) {
+                                    Rectangle()
+                                        .fill(item.categoria.color)
+                                        .frame(width: 10, height: 10)
+                                        .cornerRadius(2)
+                                    Text(item.categoria.nome)
+                                        .font(.subheadline)
+                                        .lineLimit(1)
+                                    Spacer()
+                                    Text(String(format: "%.0f%%", item.percentual * 100))
+                                        .font(.subheadline.weight(.medium))
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            if homeViewModel.categoriasResumo.count > 3 {
+                                HStack(spacing: 6) {
+                                    Rectangle()
+                                        .fill(Color.gray.opacity(0.6))
+                                        .frame(width: 10, height: 10)
+                                        .cornerRadius(2)
+                                    Text("Outras")
+                                        .font(.caption)
+                                        .lineLimit(1)
+                                    let outrasPercent = homeViewModel.categoriasResumo.dropFirst(3).map { $0.percentual }.reduce(0, +)
+                                    Text(String(format: "%.0f%%", outrasPercent * 100))
+                                        .font(.caption.weight(.medium))
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    } else { // totalSpentMonth <= 0 (estado vazio para texto)
+                        Text("Nenhuma despesa registrada este mês.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                    }
+                    if homeViewModel.totalSpentMonth > 0 && homeViewModel.categoriasResumo.isEmpty {
+                        Text("Resumo por categoria indisponível.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.top, 4)
+                    }
+                }
+                .layoutPriority(1) // Dá prioridade de largura para o conteúdo de texto
                 
-                if homeViewModel.totalSpentMonth > 0 {
-                    Text("Total Gasto:")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(homeViewModel.totalSpentMonth, format: .currency(code: "BRL"))
-                        .font(.title2.bold())
-                        .foregroundStyle(.red)
-                } else {
-                    Text("Nenhuma despesa registrada este mês.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .frame(minHeight: 60, alignment: .center)
+                Spacer() // Este Spacer empurra o gráfico para a extremidade direita
+                
+                // GRÁFICO DE DESPESAS (à direita)
+                if homeViewModel.totalSpentMonth > 0 && !homeViewModel.categoriasResumo.isEmpty {
+                    let categoriesWithValues = homeViewModel.categoriasResumo.filter { $0.total > 0 } // Filtra para o gráfico
+                    
+                    if !categoriesWithValues.isEmpty { // Só mostra o gráfico se houver categorias com valores
+                        Chart(categoriesWithValues) { item in
+                            SectorMark(
+                                angle: .value("Total Gasto", item.total),
+                                innerRadius: .ratio(0.65),
+                                angularInset: 1.5
+                            )
+                            .foregroundStyle(item.categoria.color)
+                            .cornerRadius(5)
+                            .accessibilityLabel(item.categoria.nome)
+                            .accessibilityValue("\(String(format: "%.0f", item.percentual * 100))%")
+                        }
+                        .frame(width: 100, height: 100)
+                    }
                 }
             }
-            .padding()
+            .padding() // Padding interno do card
+            .frame(maxWidth: .infinity, minHeight: 150) // minHeight conforme seu código
             .background(Color(.secondarySystemBackground))
             .cornerRadius(12)
-            .frame(maxWidth: .infinity, minHeight: 130)
         }
         .buttonStyle(PlainButtonStyle())
     }
 }
-
 // Preview para HomeView
 #Preview {
     let config = ModelConfiguration(isStoredInMemoryOnly: true)
