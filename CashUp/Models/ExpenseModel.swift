@@ -42,3 +42,62 @@ final class ExpenseModel {
         self.subcategoria = subcategoria
     }
 }
+
+// Dentro da extensão ou do corpo de ExpenseModel.swift
+
+extension ExpenseModel {
+    func generateOccurrences(forDateInterval queryInterval: DateInterval, calendar: Calendar = .current) -> [DisplayableExpense] {
+        guard let repetitionData = self.repetition, repetitionData.repeatOption != .nunca else {
+            if queryInterval.contains(self.date) {
+                 return [DisplayableExpense(from: self)]
+            }
+            return []
+        }
+
+        var occurrences: [DisplayableExpense] = []
+        var currentDateInLoop = self.date
+        let recurrenceStartDate = self.date
+        
+        // Obter as datas excluídas, normalizadas para o início do dia para comparação correta
+        let normalizedExcludedDates = repetitionData.excludedDates?.map { calendar.startOfDay(for: $0) } ?? []
+
+        while currentDateInLoop <= (repetitionData.endDate ?? queryInterval.end) {
+            let normalizedCurrentDateInLoop = calendar.startOfDay(for: currentDateInLoop) // Normaliza para comparação
+
+            if currentDateInLoop >= queryInterval.start &&
+               currentDateInLoop <= queryInterval.end &&
+               currentDateInLoop >= recurrenceStartDate &&
+               !normalizedExcludedDates.contains(normalizedCurrentDateInLoop) { // <<< NOVA VERIFICAÇÃO
+
+                if let definiteEndDate = repetitionData.endDate, currentDateInLoop > definiteEndDate {
+                    break
+                }
+                occurrences.append(DisplayableExpense(from: self, occurrenceDate: currentDateInLoop))
+            }
+            
+            if currentDateInLoop > queryInterval.end && repetitionData.endDate == nil {
+                 break
+            }
+
+            var nextDateCand: Date?
+            switch repetitionData.repeatOption {
+            case .nunca: break
+            case .diariamente:
+                nextDateCand = calendar.date(byAdding: .day, value: 1, to: currentDateInLoop)
+            case .semanalmente:
+                nextDateCand = calendar.date(byAdding: .weekOfYear, value: 1, to: currentDateInLoop)
+            case .aCada10Dias:
+                nextDateCand = calendar.date(byAdding: .day, value: 10, to: currentDateInLoop)
+            case .mensalmente:
+                nextDateCand = calendar.date(byAdding: .month, value: 1, to: currentDateInLoop)
+            case .anualmente:
+                nextDateCand = calendar.date(byAdding: .year, value: 1, to: currentDateInLoop)
+            }
+            
+            guard let nextDate = nextDateCand else { break }
+            currentDateInLoop = nextDate
+        }
+        
+        return occurrences
+    }
+}

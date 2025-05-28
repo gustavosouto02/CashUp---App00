@@ -15,12 +15,7 @@ class PlanningViewModel: ObservableObject {
     @Published var currentMonth: Date {
         didSet {
             if oldValue.startOfMonth() != currentMonth.startOfMonth() {
-                objectWillChange.send() // Notifica as Views que os dados podem ter mudado
-                                        // A HomeView já observa objectWillChange do PlanningViewModel
-                                        // e chama seu próprio updateCardData.
-                                        // A PlanningPlanejarView usa @Query que se atualiza com o modelContext.
-                                        // Se houver dados específicos que esta VM calcula e publica,
-                                        // pode ser necessário chamar um método de recálculo aqui também.
+                objectWillChange.send()
             }
         }
     }
@@ -29,8 +24,6 @@ class PlanningViewModel: ObservableObject {
         self.modelContext = modelContext
         let now = Date()
         _currentMonth = Published(initialValue: now.startOfMonth())
-        // Não é necessário chamar objectWillChange.send() aqui, pois é o init.
-        // HomeViewModel chamará updateCardData no seu init, que usará os dados desta VM.
     }
 
     // MARK: - Gerenciamento de Categorias e Subcategorias Planejadas
@@ -292,10 +285,3 @@ class PlanningViewModel: ObservableObject {
         }
     }
 }
-
-// Supondo que Date().startOfMonth() esteja definido em uma extensão:
-// extension Date {
-//    func startOfMonth(using calendar: Calendar = .current) -> Date {
-//        calendar.date(from: calendar.dateComponents([.year, .month], from: self))!
-//    }
-// }

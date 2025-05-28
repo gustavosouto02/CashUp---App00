@@ -216,7 +216,7 @@ fileprivate let todasCategoriasSeedInfo: [CategoriaSeedInfo] = [
     CategoriaSeedInfo(
         id: SeedIDs.idEstiloDeVida,
         nome: "Estilo de Vida",
-        cor: Color(red: 0.85, green: 0.33, blue: 0.31),
+        cor: Color(red: 0.25, green: 0.45, blue: 0.75),
         icon: "figure.wave",
         subcategorias: [
             SubcategoriaSeedInfo(id: SeedIDs.idSubAnimalEstimacao, nome: "Animal Estimação", icon: "pawprint.fill"),

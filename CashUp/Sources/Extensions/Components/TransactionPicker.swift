@@ -19,5 +19,3 @@ struct TransactionPicker: View {
         .frame(maxWidth: .infinity)
     }
 }
-
-

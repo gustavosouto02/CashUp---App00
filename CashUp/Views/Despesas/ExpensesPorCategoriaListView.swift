@@ -1,19 +1,26 @@
 import SwiftUI
 import SwiftData
 
-// Struct auxiliar para o sheet
+// Struct auxiliar para o sheet (permanece a mesma, pois opera sobre SubcategoriaModel)
 struct SubcategoryDetailSheetDataSwiftData: Identifiable {
-    let id = UUID()
+    let id = UUID() // Pode ser subcategoriaModel.id se for estável e único
     let subcategoriaModel: SubcategoriaModel
-    let isIncome: Bool
+    let isIncome: Bool // Para passar o contexto do tipo de transação para a DetailView
 }
 
 struct ExpensesPorCategoriaListView: View {
     @ObservedObject var viewModel: ExpensesViewModel
 
-    @State private var localSelectedTransactionType: Int = 0
+    // Estado local para o picker, sincronizado com o da ViewModel
+    @State private var localSelectedTransactionType: Int
     @State private var expandedCategories: Set<UUID> = []
     @State private var selectedSubcategoryDataForSheet: SubcategoryDetailSheetDataSwiftData? = nil
+
+    // Inicializador para sincronizar o estado local com o da ViewModel
+    init(viewModel: ExpensesViewModel) {
+        self.viewModel = viewModel
+        self._localSelectedTransactionType = State(initialValue: viewModel.selectedTransactionType)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -21,6 +28,8 @@ struct ExpensesPorCategoriaListView: View {
                 .padding(.horizontal)
                 .padding(.top, 8)
                 .onChange(of: localSelectedTransactionType) { _, newValue in
+                    // Atualiza a ViewModel quando o picker local muda
+                    // Isso vai disparar loadDisplayableExpenses na ViewModel
                     viewModel.selectedTransactionType = newValue
                 }
 
@@ -32,7 +41,7 @@ struct ExpensesPorCategoriaListView: View {
 
             ScrollView {
                 if categoriasFiltradas.isEmpty {
-                    Text("Nenhuma transação nesta categoria para o mês.")
+                    Text(localSelectedTransactionType == 0 ? "Nenhuma despesa para listar por categoria." : "Nenhuma receita para listar por categoria.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .padding()
@@ -51,8 +60,9 @@ struct ExpensesPorCategoriaListView: View {
                                             .cornerRadius(3)
 
                                         Text(categoriaModel.nome)
-                                            .font(.subheadline)
+                                            .font(.headline)
                                             .fontWeight(.semibold)
+                                            .foregroundColor(.primary) // Garante que o texto seja visível
 
                                         Spacer()
 
@@ -63,7 +73,6 @@ struct ExpensesPorCategoriaListView: View {
                                         Image(systemName: expandedCategories.contains(categoriaModel.id) ? "chevron.down" : "chevron.right")
                                             .foregroundStyle(.secondary)
                                     }
-                                    .padding(.horizontal)
                                     .padding(.vertical, 10)
                                     .background(
                                         RoundedRectangle(cornerRadius: 12)
@@ -83,15 +92,18 @@ struct ExpensesPorCategoriaListView: View {
                                             } label: {
                                                 HStack {
                                                     Circle()
-                                                        .fill(categoriaModel.color)
-                                                        .frame(width: 10, height: 10)
+                                                        .fill(categoriaModel.color.opacity(0.7)) // Usa cor da categoria pai com opacidade
+                                                        .frame(width: 15, height: 15)
 
                                                     Text(subModel.nome)
-                                                        .font(.subheadline)
+                                                        .font(.headline)
+                                                        .foregroundColor(.primary) // Garante que o texto seja visível
+
 
                                                     Spacer()
 
                                                     Text(formatCurrency(totalParaSubcategoria(subModel)))
+                                                        .font(.subheadline.weight(.medium)) // Fonte menor para subtotal
                                                         .foregroundStyle(.secondary)
 
                                                     Image(systemName: "chevron.right")
@@ -104,12 +116,21 @@ struct ExpensesPorCategoriaListView: View {
                                                 .contentShape(Rectangle())
                                             }
                                             .buttonStyle(.plain)
+                                            if subModel.id != subcategoriasParaCategoria(categoriaModel).last?.id {
+                                                Divider().padding(.leading, 20) // Divisor entre subcategorias
+                                            }
                                         }
                                     }
-                                    .padding(.horizontal, 8)
+                                    .padding(.horizontal, 8) // Padding para o bloco de subcategorias
                                     .padding(.bottom, 8)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(Color(.systemGray6).opacity(0.5)) // Fundo levemente diferente para subcategorias
+                                            .padding(.horizontal, 8) // Ajuste para o fundo não tocar as bordas
+                                    )
                                 }
                             }
+                            .padding(.horizontal) // Padding para cada bloco de categoria principal
                         }
                     }
                     .padding(.vertical)
@@ -117,53 +138,65 @@ struct ExpensesPorCategoriaListView: View {
             }
         }
         .sheet(item: $selectedSubcategoryDataForSheet) { data in
+            // A SubcategoryDetailView precisará do modelContext se fizer operações de fetch/save
             SubcategoryDetailView(
                 subcategoriaModel: data.subcategoriaModel,
                 isIncome: data.isIncome,
-                viewModel: viewModel
+                viewModel: viewModel // Passa a ExpensesViewModel para a SubcategoryDetailView
             )
+            .environment(\.modelContext, viewModel.modelContext) // Passa o modelContext
         }
         .onAppear {
-            viewModel.selectedTransactionType = localSelectedTransactionType
+            // Sincroniza o picker local com o da ViewModel na primeira aparição
+            // e força um recarregamento se o estado do picker da ViewModel for diferente
+            if localSelectedTransactionType != viewModel.selectedTransactionType {
+                 localSelectedTransactionType = viewModel.selectedTransactionType
+            }
+            // viewModel.loadDisplayableExpenses() // Chamado no onAppear da ExpensesView principal ou via didSet
         }
     }
 
-    // MARK: - Lógica de Dados
+    // MARK: - Lógica de Dados (agora opera sobre DisplayableExpense via viewModel.transacoesExibidas)
 
-    private var transacoesRelevantes: [ExpenseModel] {
-        localSelectedTransactionType == 0
-            ? viewModel.expensesOnlyForCurrentMonth()
-            : viewModel.incomesOnlyForCurrentMonth()
+    private var transacoesRelevantesParaCalculo: [DisplayableExpense] {
+        // Usa a propriedade já filtrada e com recorrências da ViewModel
+        // selectedTransactionType na viewModel já filtra transacoesExibidas
+        viewModel.transacoesExibidas
     }
 
     private var categoriasFiltradas: [CategoriaModel] {
-        let categoriasComNuloRemovido: [CategoriaModel] = transacoesRelevantes.compactMap { $0.categoria }
+        let categoriasComNuloRemovido: [CategoriaModel] = transacoesRelevantesParaCalculo.compactMap { $0.categoria }
         let categoriasUnicas: Set<CategoriaModel> = Set(categoriasComNuloRemovido)
-        let categoriasOrdenadas: [CategoriaModel] = categoriasUnicas.sorted { $0.nome < $1.nome }
+        
+        // Ordena por total gasto na categoria, decrescente
+        let categoriasOrdenadas: [CategoriaModel] = categoriasUnicas.sorted {
+            totalParaCategoria($0) > totalParaCategoria($1)
+        }
         return categoriasOrdenadas
     }
 
     func subcategoriasParaCategoria(_ categoriaModel: CategoriaModel) -> [SubcategoriaModel] {
-        let transacoes = transacoesRelevantes.filter { $0.categoria == categoriaModel }
-        let subcategorias = transacoes.compactMap { $0.subcategoria }
+        let transacoesDaCategoria = transacoesRelevantesParaCalculo.filter { $0.categoria?.id == categoriaModel.id }
+        let subcategorias = transacoesDaCategoria.compactMap { $0.subcategoria }
         let subcategoriasUnicas = Set(subcategorias)
-        return Array(subcategoriasUnicas).sorted { $0.nome < $1.nome }
+        
+        // Ordena por total gasto na subcategoria, decrescente
+        return Array(subcategoriasUnicas).sorted {
+            totalParaSubcategoria($0) > totalParaSubcategoria($1)
+        }
     }
 
     func totalParaCategoria(_ categoriaModel: CategoriaModel) -> Double {
-        transacoesRelevantes
-            .filter { $0.categoria == categoriaModel }
-            .map { $0.amount }
-            .reduce(0, +)
+        transacoesRelevantesParaCalculo
+            .filter { $0.categoria?.id == categoriaModel.id }
+            .reduce(0.0) { $0 + $1.amount }
     }
 
     func totalParaSubcategoria(_ subModel: SubcategoriaModel) -> Double {
-        transacoesRelevantes
-            .filter { $0.subcategoria == subModel }
-            .map { $0.amount }
-            .reduce(0, +)
+        transacoesRelevantesParaCalculo
+            .filter { $0.subcategoria?.id == subModel.id }
+            .reduce(0.0) { $0 + $1.amount }
     }
-
 
     func toggleCategory(_ id: UUID) {
         if expandedCategories.contains(id) {

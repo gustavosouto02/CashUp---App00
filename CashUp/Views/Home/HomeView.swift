@@ -205,7 +205,7 @@ struct HomeView: View {
                                         .lineLimit(1)
                                     Spacer()
                                     Text(String(format: "%.0f%%", item.percentual * 100))
-                                        .font(.subheadline.weight(.medium))
+                                        .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
                             }
@@ -218,6 +218,7 @@ struct HomeView: View {
                                     Text("Outras")
                                         .font(.caption)
                                         .lineLimit(1)
+                                    Spacer()
                                     let outrasPercent = homeViewModel.categoriasResumo.dropFirst(3).map { $0.percentual }.reduce(0, +)
                                     Text(String(format: "%.0f%%", outrasPercent * 100))
                                         .font(.caption.weight(.medium))

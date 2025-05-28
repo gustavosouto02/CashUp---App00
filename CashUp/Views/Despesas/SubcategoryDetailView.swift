@@ -1,44 +1,37 @@
-//
-//  SubcategoryDetailView.swift
-//  CashUp
-//
-//  Created by Gustavo Souto Pereira on 21/05/25.
-//
-
-// Arquivo: CashUp/Views/Despesas/SubcategoryDetailView.swift
-// Refatorado para SwiftData
-
 import SwiftUI
 import SwiftData
 
-// A struct auxiliar ExpenseSection agora usará ExpenseModel
-struct ExpenseSectionSwiftData: Identifiable {
+// A struct auxiliar ExpenseSection agora usará DisplayableExpense
+struct DisplayableExpenseSection: Identifiable { // Renomeado para clareza
     let id = UUID()
     let date: Date
-    let expenses: [ExpenseModel] // Agora contém ExpenseModel
+    let expenses: [DisplayableExpense] // Agora contém DisplayableExpense
 }
 
 struct SubcategoryDetailView: View {
-    let subcategoriaModel: SubcategoriaModel // Agora recebe SubcategoriaModel
-    let isIncome: Bool
-    @ObservedObject var viewModel: ExpensesViewModel // ViewModel refatorado
+    let subcategoriaModel: SubcategoriaModel
+    let isIncome: Bool // Para filtrar corretamente as transações
+    @ObservedObject var viewModel: ExpensesViewModel // ViewModel que contém transacoesExibidas
     @Environment(\.dismiss) var dismiss
     
     // Propriedade computada para gerar as seções da lista
-    var sections: [ExpenseSectionSwiftData] {
-        // Filtra as transações do ViewModel para a subcategoria e tipo (renda/despesa) corretos
-        let allTransactionsForMonth = viewModel.transactionsForCurrentMonth() // Busca todas as transações do mês
+    var sections: [DisplayableExpenseSection] {
+        // Usa a propriedade transacoesExibidas da viewModel, que já está filtrada por mês e tipo (despesa/receita)
+        // e já inclui as recorrências.
+        // Precisamos filtrar adicionalmente pela subcategoria específica.
         
-        let filteredExpenses = allTransactionsForMonth.filter { expenseModel in
-            (expenseModel.subcategoria?.id == subcategoriaModel.id) && (expenseModel.isIncome == isIncome)
+        let relevantTransactions = viewModel.transacoesExibidas.filter { displayableExpense in
+            // Verifica se é da subcategoria correta E se o tipo (isIncome) corresponde
+            displayableExpense.subcategoria?.id == subcategoriaModel.id && displayableExpense.isIncome == self.isIncome
         }
         
-        let groupedByDate = Dictionary(grouping: filteredExpenses) { expense in
+        let groupedByDate = Dictionary(grouping: relevantTransactions) { expense in
             Calendar.current.startOfDay(for: expense.date)
         }
         
         return groupedByDate.keys.sorted(by: { $0 > $1 }).map { date in
-            ExpenseSectionSwiftData(date: date, expenses: groupedByDate[date]!.sorted(by: { $0.date > $1.date }))
+            // Ordena as despesas dentro de cada dia pela data completa (incluindo hora, se houver)
+            DisplayableExpenseSection(date: date, expenses: groupedByDate[date]!.sorted(by: { $0.date > $1.date }))
         }
     }
     
@@ -48,7 +41,7 @@ struct SubcategoryDetailView: View {
                 if sections.isEmpty {
                     VStack {
                         Spacer()
-                        Text("Nenhuma transação registrada para \(subcategoriaModel.nome) neste mês.")
+                        Text("Nenhuma transação registrada para \(subcategoriaModel.nome) neste mês \(isIncome ? "(receita)" : "(despesa)").")
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
                             .padding()
@@ -57,47 +50,11 @@ struct SubcategoryDetailView: View {
                 } else {
                     List {
                         ForEach(sections) { section in
-                            Section(header: Text(formatSectionDate(section.date))) { // Sua func utilitária
-                                ForEach(section.expenses) { expenseModel in // Agora é ExpenseModel
-                                    // Linha de despesa
-                                    HStack {
-                                        // Ícone da subcategoria (e cor da categoria pai)
-                                        if let catModel = expenseModel.categoria { // Acessa a categoria do ExpenseModel
-                                            CategoriasViewIcon(systemName: subcategoriaModel.icon, cor: catModel.color, size: 24) //
-                                        } else {
-                                            Image(systemName: "questionmark.circle.fill") // Fallback
-                                                .resizable().scaledToFit().frame(width: 24 * 1.4, height: 24 * 1.4)
-                                                .foregroundStyle(Color.gray)
-                                        }
-                                        
-                                        VStack(alignment: .leading) {
-                                            if expenseModel.expenseDescription.isEmpty { // Usa expenseDescription
-                                                Text(subcategoriaModel.nome) // Nome da subcategoria principal
-                                                    .font(.headline)
-                                            } else {
-                                                Text(subcategoriaModel.nome)
-                                                    .font(.headline)
-                                                Text(expenseModel.expenseDescription) // Descrição da transação
-                                                    .font(.subheadline)
-                                                    .foregroundStyle(.secondary)
-                                            }
-                                        }
-                                        
-                                        Spacer()
-                                        
-                                        Text(formatCurrency(expenseModel.amount)) // Sua func utilitária
-                                            .font(.headline)
-                                            .fontWeight(.semibold)
-                                            .foregroundStyle(expenseModel.isIncome ? .green : (expenseModel.amount > 0 ? .red : .primary) ) // Ajusta cor para despesa
-                                    }
-                                    .padding(.vertical, 8)
-                                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                        Button(role: .destructive) {
-                                            viewModel.removeExpense(expenseModel)
-                                        } label: {
-                                            Label("Excluir", systemImage: "trash")
-                                        }
-                                    }
+                            Section(header: Text(formatSectionDate(section.date))) {
+                                ForEach(section.expenses) { displayableExpense in
+                                    // Usar DisplayableExpenseRow ou uma view de linha similar
+                                    DisplayableExpenseRow(expense: displayableExpense)
+                                    // Não precisa de swipe actions aqui se a deleção é feita na lista principal
                                 }
                             }
                         }

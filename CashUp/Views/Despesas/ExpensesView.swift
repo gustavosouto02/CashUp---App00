@@ -1,5 +1,5 @@
 // Arquivo: CashUp/Views/Despesas/ExpensesView.swift
-// Refatorado para receber ViewModel via EnvironmentObject
+// Refatorado para receber ViewModel via EnvironmentObject e usar DisplayableExpense implicitamente
 
 import SwiftUI
 import SwiftData
@@ -8,75 +8,58 @@ struct ExpensesView: View {
     @EnvironmentObject var viewModel: ExpensesViewModel
 
     var body: some View {
-        let _ = Self._printChanges() // Para depuração
+        // let _ = Self._printChanges() // Para depuração
 
         NavigationStack {
             VStack(alignment: .leading, spacing: 16) {
                 
-                MonthSelector(
+                MonthSelector( // Esta View precisa existir e funcionar como esperado
                     viewModel: MonthSelectorViewModel(selectedMonth: viewModel.currentMonth),
                     onMonthChanged: { selectedDate in
                         viewModel.currentMonth = selectedDate.startOfMonth()
                     }
                 )
 
-                ExpensesResumoView( //
-                                   income: viewModel.totalIncomeForCurrentMonth(),
-                                   expense: viewModel.totalExpenseForCurrentMonth()
+                .padding(.horizontal) // Exemplo se quisesse padding aqui
+
+                ExpensesResumoView( // Esta View não muda, pois recebe Doubles
+                    income: viewModel.totalIncomeForCurrentMonth(),
+                    expense: viewModel.totalExpenseForCurrentMonth()
                 )
-                
-                ExpensesPorCategoriaListView(viewModel: viewModel) //
-                    .frame(height: 200)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(16)
-                    .frame(maxWidth: .infinity)
-                
+                .padding(.horizontal) // Adiciona padding horizontal ao resumo
+
+                ExpensesPorCategoriaListView(viewModel: viewModel)
+                    // O frame, background e cornerRadius devem ser aplicados de forma consistente.
+                    // Se este é um "card", aplicar aqui. Se for parte de um layout maior, pode ser diferente.
+                    .frame(height: 250) // Aumentado um pouco a altura para melhor visualização
+                     .background(Color(.systemGray6)) // Removido background aqui para um visual mais limpo, pode ser adicionado se preferir "card"
+                     .cornerRadius(16)
+                     .padding(.horizontal)
+
                 Text("Extrato de Transações")
                     .font(.title3)
                     .fontWeight(.semibold)
-                    .foregroundStyle(.primary)
-                    .padding(.horizontal, 8)
+                    .padding(.horizontal) // Adicionado padding
+                    // .padding(.horizontal, 8) // Ajuste de como era antes
+
+                // ExpensesListView agora consome viewModel.transacoesExibidas que são DisplayableExpense
+                ExpensesListView(viewModel: viewModel)
+                     .background(Color(.systemGray6)) // Removido background aqui, a lista geralmente não tem seu próprio fundo de card assim
+                     .cornerRadius(16) // Removido
+                    .padding(.horizontal) // Adiciona padding horizontal à lista
                 
-                ExpensesListView(viewModel: viewModel) //
-                    .background(Color(.systemGray6))
-                    .cornerRadius(16)
             }
-            .padding()
-            .navigationTitle("Despesas")
+            .padding(.top) 
+            .navigationTitle("Transações") // Título mais genérico
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
-                        // ação para filtros
-                        print("Botão de Filtro de Despesas tocado.")
+                        print("Botão de Filtro.")
                     }) {
-                        Image(systemName: "line.3.horizontal.decrease.circle")
+                        Image(systemName: "line.3.horizontal.decrease.circle.fill")
                     }
                 }
             }
         }
-    }
-}
-
-#Preview {
-    
-    let config = ModelConfiguration(isStoredInMemoryOnly: true)
-    let container: ModelContainer
-    do {
-        container = try ModelContainer(for: Schema([
-            CategoriaModel.self, SubcategoriaModel.self, ExpenseModel.self
-        ]), configurations: [config])
-        
-        let modelContext = container.mainContext
-        
-        // Criar ViewModel para o preview
-        let expensesVM = ExpensesViewModel(modelContext: modelContext)
-        expensesVM.currentMonth = Date().startOfMonth()
-
-        return ExpensesView()
-            .modelContainer(container) 
-            .environmentObject(expensesVM)
-
-    } catch {
-        return Text("Erro ao configurar preview para ExpensesView: \(error.localizedDescription)")
     }
 }

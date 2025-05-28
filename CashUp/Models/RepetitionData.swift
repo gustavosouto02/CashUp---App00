@@ -6,15 +6,20 @@
 //
 
 // Arquivo: Models/RepetitionData.swift
-// (Baseado em Repetition de CashUp/Views/Transação/Componentes/RepeatOptionPicker.swift)
 
 import Foundation
 
-// RepeatOption já é Codable no seu código original em RepeatOptionPicker.swift
-// Certifique-se de que ele permaneça acessível (pode ser movido para este arquivo ou um arquivo global de Enums/Structs)
-// enum RepeatOption: String, CaseIterable, Identifiable, Codable { ... }
-
 struct RepetitionData: Codable, Equatable {
-    let repeatOption: RepeatOption
-    let endDate: Date?
+    var repeatOption: RepeatOption
+    var endDate: Date?
+    var excludedDates: [Date]? // NOVA PROPRIEDADE: Datas das ocorrências que foram "deletadas"
+
+    // Atualize o init se você tiver um customizado, ou deixe o padrão.
+    // Se deixar o padrão, excludedDates será nil inicialmente.
+    // Se você tiver um init customizado:
+    init(repeatOption: RepeatOption, endDate: Date?, excludedDates: [Date]? = nil) {
+        self.repeatOption = repeatOption
+        self.endDate = endDate
+        self.excludedDates = excludedDates
+    }
 }
