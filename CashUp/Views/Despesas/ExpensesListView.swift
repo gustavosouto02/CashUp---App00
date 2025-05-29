@@ -66,9 +66,6 @@ struct ExpensesListView: View {
                                                 self.expenseToDelete = displayableExpense
                                                 self.showRecurrenceDeleteOptions = true
                                             } else {
-                                                // Para despesa única ou a base de uma recorrência (se originalExpenseID for nil),
-                                                // podemos assumir que o usuário quer deletar o item em si.
-                                                // O scope .entireSeries para um item único efetivamente deleta o item.
                                                 viewModel.removeExpense(displayableExpense, scope: .entireSeries)
                                             }
                                         } label: {
@@ -137,7 +134,7 @@ struct DisplayableExpenseRow: View {
                  CategoriasViewIcon(
                     systemName: expense.subcategoria?.icon ?? categoria.icon,
                     cor: categoria.color,
-                    size: 20
+                    size: 18
                 )
             } else {
                 Image(systemName: "questionmark.circle.fill")
@@ -149,7 +146,7 @@ struct DisplayableExpenseRow: View {
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(expense.expenseDescription.isEmpty ? (expense.subcategoria?.nome ?? expense.categoria?.nome ?? (expense.isIncome ? "Receita" : "Despesa")) : expense.expenseDescription)
-                    .font(.headline)
+                    .font(.subheadline)
                     .lineLimit(1)
                 
                 if !expense.expenseDescription.isEmpty && (expense.subcategoria != nil || expense.categoria != nil) {
@@ -167,6 +164,7 @@ struct DisplayableExpenseRow: View {
                 .fontWeight(.bold)
         }
         .padding(.vertical, 6)
+        
     }
 }
 

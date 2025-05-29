@@ -372,4 +372,3 @@ struct DisplayableExpense: Identifiable, Hashable { // Hashable se for usar em S
         hasher.combine(id)
     }
 }
-

@@ -6,6 +6,7 @@ import SwiftData
 
 struct ExpensesView: View {
     @EnvironmentObject var viewModel: ExpensesViewModel
+    @State private var isAddTransactionPresented = false
 
     var body: some View {
         // let _ = Self._printChanges() // Para depuração
@@ -52,13 +53,28 @@ struct ExpensesView: View {
             .padding(.top) 
             .navigationTitle("Transações") // Título mais genérico
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        print("Botão de Filtro.")
-                    }) {
-                        Image(systemName: "line.3.horizontal.decrease.circle.fill")
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+//                    Button {
+//                        print("Botão de Filtro.")
+//                    } label: {
+//                        Image(systemName: "line.3.horizontal.decrease.circle.fill")
+//                            .font(.headline)
+//                    }
+                    
+                    Button {
+                        isAddTransactionPresented = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "plus.circle.fill")
+                            Text("Registrar")
+                        }
+                        .font(.headline)
                     }
                 }
+            }
+            .fullScreenCover(isPresented: $isAddTransactionPresented) {
+                AddTransactionView()
+                    .environmentObject(viewModel)
             }
         }
     }

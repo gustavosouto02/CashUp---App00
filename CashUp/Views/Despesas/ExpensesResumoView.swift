@@ -41,10 +41,13 @@ struct ExpensesResumoView: View {
     
     private func resumoItem(value: Double, label: String, color: Color) -> some View {
         VStack(alignment: .center, spacing: 4) {
-            Text(formatCurrency(value)) // Sua func utilitária
+            Text(formatCurrency(value))
                 .font(.title3)
                 .bold()
-                .foregroundStyle(color) // Usa a cor passada
+                .foregroundStyle(color)
+                .lineLimit(1)
+                .minimumScaleFactor(0.5) // Reduz a fonte se o valor for longo
+                .frame(maxWidth: .infinity)
             Text(label)
                 .font(.caption)
                 .foregroundStyle(.secondary)

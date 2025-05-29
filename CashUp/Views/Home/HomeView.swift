@@ -187,7 +187,11 @@ struct HomeView: View {
                             .foregroundStyle(.secondary)
                         Text(homeViewModel.totalSpentMonth, format: .currency(code: "BRL"))
                             .font(.title.bold())
+                            .minimumScaleFactor(0.5) // Diminui o tamanho do texto se for muito longo
+                            .lineLimit(1)            // Mantém em uma linha só
+                            .frame(maxWidth: 200, alignment: .leading) // Evita quebra e layout estourado
                             .padding(.bottom, 6)
+
                         
                         if !homeViewModel.categoriasResumo.isEmpty {
                             Text("Categorias Principais")

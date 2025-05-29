@@ -13,27 +13,31 @@ struct SubcategoryDetailView: View {
     let isIncome: Bool // Para filtrar corretamente as transações
     @ObservedObject var viewModel: ExpensesViewModel // ViewModel que contém transacoesExibidas
     @Environment(\.dismiss) var dismiss
+    @State private var expenseToDelete: DisplayableExpense? = nil
+    @State private var showRecurrenceDeleteOptions: Bool = false
+
     
     // Propriedade computada para gerar as seções da lista
     var sections: [DisplayableExpenseSection] {
-        // Usa a propriedade transacoesExibidas da viewModel, que já está filtrada por mês e tipo (despesa/receita)
-        // e já inclui as recorrências.
-        // Precisamos filtrar adicionalmente pela subcategoria específica.
-        
-        let relevantTransactions = viewModel.transacoesExibidas.filter { displayableExpense in
-            // Verifica se é da subcategoria correta E se o tipo (isIncome) corresponde
-            displayableExpense.subcategoria?.id == subcategoriaModel.id && displayableExpense.isIncome == self.isIncome
+        // 1. Filtra as transações relevantes
+        let filteredTransactions = viewModel.transacoesExibidas.filter { displayableExpense in
+            displayableExpense.subcategoria?.id == subcategoriaModel.id && displayableExpense.isIncome == isIncome
         }
         
-        let groupedByDate = Dictionary(grouping: relevantTransactions) { expense in
+        // 2. Agrupa por data (dia)
+        let grouped = Dictionary(grouping: filteredTransactions) { expense in
             Calendar.current.startOfDay(for: expense.date)
         }
-        
-        return groupedByDate.keys.sorted(by: { $0 > $1 }).map { date in
-            // Ordena as despesas dentro de cada dia pela data completa (incluindo hora, se houver)
-            DisplayableExpenseSection(date: date, expenses: groupedByDate[date]!.sorted(by: { $0.date > $1.date }))
+
+        // 3. Mapeia para seções ordenadas
+        let sortedDates = grouped.keys.sorted(by: { $0 > $1 })
+
+        return sortedDates.map { date in
+            let expenses = grouped[date]?.sorted(by: { $0.date > $1.date }) ?? []
+            return DisplayableExpenseSection(date: date, expenses: expenses)
         }
     }
+
     
     var body: some View {
         NavigationStack {
@@ -55,6 +59,42 @@ struct SubcategoryDetailView: View {
                                     // Usar DisplayableExpenseRow ou uma view de linha similar
                                     DisplayableExpenseRow(expense: displayableExpense)
                                     // Não precisa de swipe actions aqui se a deleção é feita na lista principal
+                                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                        Button(role: .destructive) {
+                                            if displayableExpense.isRecurringInstance && displayableExpense.originalExpenseID != nil {
+                                                self.expenseToDelete = displayableExpense
+                                                self.showRecurrenceDeleteOptions = true
+                                            } else {
+                                                viewModel.removeExpense(displayableExpense, scope: .entireSeries)
+                                            }
+                                        } label: {
+                                            Label("Excluir", systemImage: "trash")
+                                        }
+                                    }
+                                    .confirmationDialog(
+                                        "Apagar Transação Recorrente",
+                                        isPresented: $showRecurrenceDeleteOptions,
+                                        presenting: expenseToDelete
+                                    ) { expense in
+                                        Button("Apagar somente esta ocorrência") {
+                                            viewModel.removeExpense(expense, scope: .thisOccurrenceOnly)
+                                            self.expenseToDelete = nil
+                                        }
+                                        Button("Apagar esta e todas as futuras") {
+                                            viewModel.removeExpense(expense, scope: .thisAndAllFutureOccurrences)
+                                            self.expenseToDelete = nil
+                                        }
+                                        Button("Apagar toda a série", role: .destructive) {
+                                            viewModel.removeExpense(expense, scope: .entireSeries)
+                                            self.expenseToDelete = nil
+                                        }
+                                        Button("Cancelar", role: .cancel) {
+                                            self.expenseToDelete = nil
+                                        }
+                                    } message: { expense in
+                                        Text("A transação \"\(expense.expenseDescription)\" de \(formatCurrency(expense.amount)) em \(expense.date.formatted(date: .numeric, time: .omitted)) é recorrente. Como você gostaria de apagá-la?")
+                                    }
+
                                 }
                             }
                         }

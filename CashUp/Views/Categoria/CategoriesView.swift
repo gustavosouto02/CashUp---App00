@@ -62,34 +62,3 @@ struct CategoriesView: View {
 
     }
 }
-
-// Preview para CategoriesView
-#Preview {
-
-    let config = ModelConfiguration(isStoredInMemoryOnly: true)
-    let container: ModelContainer
-    do {
-        container = try ModelContainer(for: Schema([CategoriaModel.self, SubcategoriaModel.self]), configurations: [config])
-        let modelContext = container.mainContext
-        
-
-        let cat1 = CategoriaModel(id: UUID(), nome: "Alimentação", icon: "fork.knife", color: .orange)
-        let sub1_1 = SubcategoriaModel(id: UUID(), nome: "Restaurante", icon: "takeoutbag.and.cup.and.straw.fill", categoria: cat1, usageCount: 3)
-        cat1.subcategorias = [sub1_1]
-        modelContext.insert(cat1)
-        try modelContext.save()
-        
-        let categoriesVM_preview = CategoriesViewModel(modelContext: modelContext)
-        
-        return CategoriesView(
-            viewModel: categoriesVM_preview,
-            onSubcategoriaModelSelected: { subModel in
-                print("Preview: SubcategoriaModel selecionada - \(subModel.nome)")
-            }
-        )
-        .modelContainer(container) 
-
-    } catch {
-        return Text("Erro ao criar preview para CategoriesView: \(error.localizedDescription)")
-    }
-}
