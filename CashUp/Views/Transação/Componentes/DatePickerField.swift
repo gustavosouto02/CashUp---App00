@@ -19,6 +19,8 @@ struct DatePickerField: View {
 
             Text(formattedDate)
                 .font(.title2)
+                .minimumScaleFactor(0.5)
+                .lineLimit(1)
 
             Spacer()
             

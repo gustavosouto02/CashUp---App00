@@ -134,7 +134,7 @@ struct DisplayableExpenseRow: View {
                  CategoriasViewIcon(
                     systemName: expense.subcategoria?.icon ?? categoria.icon,
                     cor: categoria.color,
-                    size: 18
+                    size: 22
                 )
             } else {
                 Image(systemName: "questionmark.circle.fill")
@@ -146,12 +146,12 @@ struct DisplayableExpenseRow: View {
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(expense.expenseDescription.isEmpty ? (expense.subcategoria?.nome ?? expense.categoria?.nome ?? (expense.isIncome ? "Receita" : "Despesa")) : expense.expenseDescription)
-                    .font(.subheadline)
+                    .font(.headline)
                     .lineLimit(1)
                 
                 if !expense.expenseDescription.isEmpty && (expense.subcategoria != nil || expense.categoria != nil) {
                      Text(expense.subcategoria?.nome ?? expense.categoria?.nome ?? "")
-                        .font(.caption)
+                        .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }

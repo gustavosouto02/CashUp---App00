@@ -93,7 +93,7 @@ struct ExpensesPorCategoriaListView: View {
                                                 HStack {
                                                     Circle()
                                                         .fill(categoriaModel.color.opacity(0.7)) // Usa cor da categoria pai com opacidade
-                                                        .frame(width: 15, height: 15)
+                                                        .frame(width: 10, height: 10)
 
                                                     Text(subModel.nome)
                                                         .font(.headline)
@@ -111,7 +111,6 @@ struct ExpensesPorCategoriaListView: View {
                                                         .font(.caption2)
                                                 }
                                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                                .padding(.horizontal)
                                                 .padding(.vertical, 8)
                                                 .contentShape(Rectangle())
                                             }

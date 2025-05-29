@@ -73,9 +73,12 @@ struct AddTransactionView: View {
                 }
             }
             .sheet(isPresented: $isCategoryModalPresented) {
-                let categoriesVM = CategoriesViewModel(modelContext: self.modelContext)
+                let categoriesVM = CategoriesViewModel(
+                    modelContext: self.modelContext,
+                    transactionType: addTransactionVM.selectedTransactionType == 0 ? .despesa : .receita // Passa o tipo
+                )
                 CategorySelectionSheet(
-                    viewModel: categoriesVM, // Passa o ViewModel criado
+                    viewModel: categoriesVM,
                     selectedSubcategoryModel: $selectedSubcategoryModel,
                     isPresented: $isCategoryModalPresented,
                     selectedCategoryModel: $selectedCategoryModel

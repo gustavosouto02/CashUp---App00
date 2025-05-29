@@ -39,7 +39,8 @@ struct CategoriesView: View {
                                 viewModel.registrarUso(subcategoriaModel: subcategoriaModel)
                                 onSubcategoriaModelSelected(subcategoriaModel)
                             },
-                            subcategoriasFrequentes: viewModel.subcategoriasMaisUsadas
+                            subcategoriasFrequentes: viewModel.subcategoriasMaisUsadas,
+                            transactionType: viewModel.getTransactionTypeFilter()
                         )
                     }
                     .padding(.vertical)

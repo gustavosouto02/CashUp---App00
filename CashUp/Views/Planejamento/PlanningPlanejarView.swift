@@ -48,7 +48,11 @@ struct PlanningPlanejarView: View {
                 }
             }
             .fullScreenCover(isPresented: $isCategorySheetPresented) {
-                let categoriesVM = CategoriesViewModel(modelContext: viewModel.modelContext)
+                // CORRIGIDO: transactionType agora é .despesa
+                let categoriesVM = CategoriesViewModel(
+                    modelContext: viewModel.modelContext, // Usa o modelContext do PlanningViewModel
+                    transactionType: .despesa // Filtra para mostrar apenas categorias de despesa
+                )
                 CategorySelectionSheet(
                     viewModel: categoriesVM,
                     selectedSubcategoryModel: $selectedSubcategoryFromSheet,

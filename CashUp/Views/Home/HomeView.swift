@@ -96,7 +96,7 @@ struct HomeView: View {
                 .font(.headline)
             
             if !homeViewModel.dailyExpenseChartData.isEmpty && homeViewModel.dailyExpenseChartData.contains(where: { $0.totalExpenses > 0 }) {
-                InteractiveDailyExpensesChart(dailyData: homeViewModel.dailyExpenseChartData)
+                InteractiveDailyExpensesChart(dailyData: homeViewModel.dailyExpenseChartData, expensesViewModel: ExpensesViewModel(modelContext: modelContext))
                     .frame(height: 150)
             } else {
                 HStack{
