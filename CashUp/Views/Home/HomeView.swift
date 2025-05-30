@@ -99,16 +99,23 @@ struct HomeView: View {
                 InteractiveDailyExpensesChart(dailyData: homeViewModel.dailyExpenseChartData, expensesViewModel: ExpensesViewModel(modelContext: modelContext))
                     .frame(height: 150)
             } else {
-                HStack{
-                    VStack(alignment: .leading){
-                        Text("Nenhuma transação neste mês")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                    }
-                    Spacer()
-                    Spacer()
+                // ESTADO VAZIO AMIGÁVEL PARA O GRÁFICO
+                VStack(spacing: 8) {
+                    Image(systemName: "chart.bar.xaxis.ascending.badge.clock") // Ícone sugestivo
+                        .font(.system(size: 30))
+                        .foregroundColor(.secondary.opacity(0.7))
+                    Text("Ainda sem gastos este mês!")
+                        .font(.callout)
+                        .fontWeight(.medium)
+                        .foregroundColor(.secondary)
+                    Text("Seus gastos diários aparecerão aqui.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
                 }
+                .frame(maxWidth: .infinity)
+               // .frame(height: 150) // Mantém a altura do card consistente
+                .padding() // Adiciona padding interno ao conteúdo do placeholder
             }
         }
         .padding()
@@ -147,18 +154,30 @@ struct HomeView: View {
                                  total: homeViewModel.totalPlanejadoMes > 0 ? homeViewModel.totalPlanejadoMes : 1)
                     .tint(homeViewModel.totalRestantePlanejadoMes < 0 ? .red : .blue)
                 } else {
-                    HStack{
-                        VStack(alignment: .leading){
-                            Text("Planejamento do Mês")
-                                .font(.headline)
-                            Text("Nenhum planejamento definido para este mês.")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                    Text("Planejamento do Mês")
+                        .font(.headline)
+                        .padding(.bottom, 16)
+
+                    // ESTADO VAZIO AMIGÁVEL PARA O PLANEJAMENTO
+                        //Spacer(minLength: 8)
+                        HStack { // Para centralizar o conteúdo do placeholder
+                            Spacer()
+                            VStack(spacing: 8) {
+                                Image(systemName: "pencil.and.list.clipboard")
+                                    .font(.system(size: 30))
+                                    .foregroundColor(.secondary.opacity(0.7))
+                                Text("Vamos planejar os gastos?")
+                                    .font(.callout)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.secondary)
+                                Text("Defina suas metas para este mês.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                            }
                             Spacer()
                         }
-                        Spacer()
-                        
-                    }
+                        //Spacer(minLength: 8)
                 }
             }
             .padding() // 1. Inner padding
@@ -230,11 +249,25 @@ struct HomeView: View {
                                 }
                             }
                         }
-                    } else { // totalSpentMonth <= 0 (estado vazio para texto)
-                        Text("Nenhuma despesa registrada este mês.")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        Spacer()
+                    } else {
+                        // ESTADO VAZIO AMIGÁVEL PARA DESPESAS
+                        HStack { // Para centralizar o conteúdo do placeholder
+                            Spacer()
+                            VStack(spacing: 8) {
+                                Image(systemName: "creditcard")
+                                    .font(.system(size: 30))
+                                    .foregroundColor(.secondary.opacity(0.7))
+                                Text("Sem despesas este mês")
+                                    .font(.callout)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.secondary)
+                                Text("Ótimo para o bolso ou adiciome um gasto!")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                            }
+                            Spacer()
+                        }
                     }
                     if homeViewModel.totalSpentMonth > 0 && homeViewModel.categoriasResumo.isEmpty {
                         Text("Resumo por categoria indisponível.")

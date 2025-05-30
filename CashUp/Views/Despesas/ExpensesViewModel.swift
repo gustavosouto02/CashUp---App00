@@ -238,6 +238,58 @@ class ExpensesViewModel: ObservableObject, ExpenseCalculation {
         }
         return allDisplayableTransactions
     }
+    
+    // Dentro de ExpensesViewModel.swift
+
+    func fetchTransactions(forSpecificDate date: Date, isIncome: Bool?) -> [DisplayableExpense] {
+        let calendar = Calendar.current
+        
+        guard let _ = calendar.dateInterval(of: .day, for: date),
+              let monthContainingDay = calendar.dateInterval(of: .month, for: date) else {
+            print("Erro ao criar intervalos de data para fetchTransactions(forSpecificDate:)")
+            return []
+        }
+
+        var displayableTransactionsForDay: [DisplayableExpense] = []
+
+        // 1. Buscar TODAS as definições de ExpenseModel (únicas e bases de recorrentes)
+        //    Não filtramos por data aqui ainda, pois a data de início da recorrência pode ser antiga.
+        let fetchAllDescriptor = FetchDescriptor<ExpenseModel>(sortBy: [SortDescriptor(\ExpenseModel.date, order: .forward)])
+        
+        do {
+            let allPersistedExpenses = try modelContext.fetch(fetchAllDescriptor)
+            
+            for expense in allPersistedExpenses {
+                if expense.repetition != nil && expense.repetition?.repeatOption != .nunca {
+                    // É uma despesa base recorrente.
+                    // Gere suas ocorrências para o MÊS que contém o 'specificDate',
+                    // pois uma recorrência pode ter começado em um mês anterior mas ocorrer no 'specificDate'.
+                    let occurrencesInMonth = expense.generateOccurrences(forDateInterval: monthContainingDay, calendar: calendar)
+                    // Agora filtre essas ocorrências do mês para apenas aquelas do 'specificDate'.
+                    for occurrence in occurrencesInMonth {
+                        if calendar.isDate(occurrence.date, inSameDayAs: date) {
+                            displayableTransactionsForDay.append(occurrence)
+                        }
+                    }
+                } else {
+                    // É uma despesa única, adicione se cair no 'specificDate'.
+                    if calendar.isDate(expense.date, inSameDayAs: date) { // Compara o dia
+                        displayableTransactionsForDay.append(DisplayableExpense(from: expense))
+                    }
+                }
+            }
+        } catch {
+            print("Falha ao buscar todas as despesas persistidas em fetchTransactions(forSpecificDate:): \(error)")
+            return []
+        }
+        
+        // Aplicar filtro de isIncome se fornecido
+        if let incomeStatus = isIncome {
+            return displayableTransactionsForDay.filter { $0.isIncome == incomeStatus }
+        }
+        
+        return displayableTransactionsForDay
+    }
 
     func expensesOnlyForCurrentMonth() -> [DisplayableExpense] {
         return allTransactionsForCurrentMonth().filter { !$0.isIncome }

@@ -1,185 +1,315 @@
+// Arquivo: CashUp/Views/Despesas/ExpensesPorCategoriaListView.swift
+// Interação: Lista e Gráfico sincronizados. Apenas uma categoria expandida.
+
 import SwiftUI
 import SwiftData
+import Charts
 
-// Struct auxiliar para o sheet (permanece a mesma, pois opera sobre SubcategoriaModel)
 struct SubcategoryDetailSheetDataSwiftData: Identifiable {
-    let id = UUID() // Pode ser subcategoriaModel.id se for estável e único
+    let id: UUID
     let subcategoriaModel: SubcategoriaModel
-    let isIncome: Bool // Para passar o contexto do tipo de transação para a DetailView
+    let isIncome: Bool
+
+    init(subcategoriaModel: SubcategoriaModel, isIncome: Bool) {
+        self.id = subcategoriaModel.id
+        self.subcategoriaModel = subcategoriaModel
+        self.isIncome = isIncome
+    }
 }
 
 struct ExpensesPorCategoriaListView: View {
     @ObservedObject var viewModel: ExpensesViewModel
 
-    // Estado local para o picker, sincronizado com o da ViewModel
     @State private var localSelectedTransactionType: Int
     @State private var expandedCategories: Set<UUID> = []
     @State private var selectedSubcategoryDataForSheet: SubcategoryDetailSheetDataSwiftData? = nil
+    
+    @State private var highlightedCategoryID: UUID? = nil
+    @State private var rawSelectedChartItem: ChartCategoriasData? = nil
 
-    // Inicializador para sincronizar o estado local com o da ViewModel
     init(viewModel: ExpensesViewModel) {
         self.viewModel = viewModel
         self._localSelectedTransactionType = State(initialValue: viewModel.selectedTransactionType)
     }
 
+    struct ChartCategoriasData: Identifiable, Hashable {
+        let id: UUID
+        let categoria: CategoriaModel
+        let total: Double
+        let color: Color
+        let nome: String
+        let icon: String
+
+        init(categoria: CategoriaModel, total: Double) {
+            self.id = categoria.id
+            self.categoria = categoria
+            self.total = total
+            self.color = categoria.color
+            self.nome = categoria.nome
+            self.icon = categoria.icon
+        }
+
+        static func == (lhs: ChartCategoriasData, rhs: ChartCategoriasData) -> Bool {
+            lhs.id == rhs.id
+        }
+
+        func hash(into hasher: inout Hasher) {
+            hasher.combine(id)
+        }
+    }
+
+    private var dataParaGrafico: [ChartCategoriasData] {
+        let transacoes = transacoesRelevantesParaCalculo
+        let groupedByCategoria = Dictionary(grouping: transacoes, by: { $0.categoria })
+        
+        return groupedByCategoria.compactMap { (categoriaOpt, transacoesCategoria) in
+            guard let categoria = categoriaOpt, !transacoesCategoria.isEmpty else { return nil }
+            let totalCategoria = transacoesCategoria.reduce(0) { $0 + $1.amount }
+            guard totalCategoria > 0 else { return nil }
+            return ChartCategoriasData(categoria: categoria, total: totalCategoria)
+        }.sorted { $0.total > $1.total }
+    }
+
+    // Esta propriedade agora sempre retorna TODAS as categorias para o tipo de transação,
+    // consistentemente ordenadas. O highlightedCategoryID afeta apenas o gráfico.
+    private var categoriasParaLista: [CategoriaModel] {
+        let todasCategoriasComTransacoes = transacoesRelevantesParaCalculo.compactMap { $0.categoria }
+        let categoriasUnicas = Dictionary(grouping: todasCategoriasComTransacoes, by: { $0.id })
+            .values.compactMap { $0.first }
+        
+        return categoriasUnicas.sorted {
+            totalParaCategoria($0) > totalParaCategoria($1) // Ordena sempre por total
+        }
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 0) {
             TransactionPicker(selectedTransactionType: $localSelectedTransactionType)
                 .padding(.horizontal)
                 .padding(.top, 8)
+                .padding(.bottom, 12)
                 .onChange(of: localSelectedTransactionType) { _, newValue in
-                    // Atualiza a ViewModel quando o picker local muda
-                    // Isso vai disparar loadDisplayableExpenses na ViewModel
                     viewModel.selectedTransactionType = newValue
+                    clearAllSelections()
                 }
-
-            Text(localSelectedTransactionType == 0 ? "Categorias principais de despesas" : "Categorias principais de receitas")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal)
-                .padding(.top)
-
-            ScrollView {
-                if categoriasFiltradas.isEmpty {
-                    Text(localSelectedTransactionType == 0 ? "Nenhuma despesa para listar por categoria." : "Nenhuma receita para listar por categoria.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .padding()
-                        .frame(maxWidth: .infinity, alignment: .center)
-                } else {
-                    LazyVStack(spacing: 12) {
-                        ForEach(categoriasFiltradas, id: \.id) { categoriaModel in
-                            VStack(spacing: 0) {
-                                Button {
-                                    toggleCategory(categoriaModel.id)
-                                } label: {
-                                    HStack {
-                                        Rectangle()
-                                            .fill(categoriaModel.color)
-                                            .frame(width: 6, height: 24)
-                                            .cornerRadius(3)
-
-                                        Text(categoriaModel.nome)
-                                            .font(.headline)
-                                            .fontWeight(.semibold)
-                                            .foregroundColor(.primary) // Garante que o texto seja visível
-
-                                        Spacer()
-
-                                        Text(formatCurrency(totalParaCategoria(categoriaModel)))
-                                            .font(.subheadline)
-                                            .foregroundStyle(.primary)
-
-                                        Image(systemName: expandedCategories.contains(categoriaModel.id) ? "chevron.down" : "chevron.right")
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    .padding(.vertical, 10)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .fill(Color(.systemGray6))
-                                    )
-                                }
-                                .buttonStyle(.plain)
-
-                                if expandedCategories.contains(categoriaModel.id) {
-                                    VStack(spacing: 6) {
-                                        ForEach(subcategoriasParaCategoria(categoriaModel), id: \.id) { subModel in
-                                            Button {
-                                                selectedSubcategoryDataForSheet = SubcategoryDetailSheetDataSwiftData(
-                                                    subcategoriaModel: subModel,
-                                                    isIncome: localSelectedTransactionType == 1
-                                                )
-                                            } label: {
-                                                HStack {
-                                                    Circle()
-                                                        .fill(categoriaModel.color.opacity(0.7)) // Usa cor da categoria pai com opacidade
-                                                        .frame(width: 10, height: 10)
-
-                                                    Text(subModel.nome)
-                                                        .font(.headline)
-                                                        .foregroundColor(.primary) // Garante que o texto seja visível
-
-
-                                                    Spacer()
-
-                                                    Text(formatCurrency(totalParaSubcategoria(subModel)))
-                                                        .font(.subheadline.weight(.medium)) // Fonte menor para subtotal
-                                                        .foregroundStyle(.secondary)
-
-                                                    Image(systemName: "chevron.right")
-                                                        .foregroundStyle(.secondary)
-                                                        .font(.caption2)
-                                                }
-                                                .frame(maxWidth: .infinity, alignment: .leading)
-                                                .padding(.vertical, 8)
-                                                .contentShape(Rectangle())
-                                            }
-                                            .buttonStyle(.plain)
-                                            if subModel.id != subcategoriasParaCategoria(categoriaModel).last?.id {
-                                                Divider().padding(.leading, 20) // Divisor entre subcategorias
-                                            }
-                                        }
-                                    }
-                                    .padding(.horizontal, 8) // Padding para o bloco de subcategorias
-                                    .padding(.bottom, 8)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .fill(Color(.systemGray6).opacity(0.5)) // Fundo levemente diferente para subcategorias
-                                            .padding(.horizontal, 8) // Ajuste para o fundo não tocar as bordas
-                                    )
-                                }
+            
+            if !dataParaGrafico.isEmpty {
+                ZStack {
+                    Chart(dataParaGrafico) { dataItem in
+                        SectorMark(
+                            angle: .value("Total", dataItem.total),
+                            innerRadius: .ratio(0.70),
+                            outerRadius: highlightedCategoryID == dataItem.id ? .ratio(1.0) : .ratio(0.96),
+                            angularInset: 1.5
+                        )
+                        .foregroundStyle(dataItem.color)
+                        .cornerRadius(6)
+                        .opacity(highlightedCategoryID == nil || highlightedCategoryID == dataItem.id ? 1.0 : 0.3)
+                        .accessibilityLabel(dataItem.nome)
+                        .accessibilityValue(formatCurrency(dataItem.total))
+                    }
+                    .frame(height: 160)
+                    .padding(.vertical, 5)
+                    .onChange(of: rawSelectedChartItem) { _, newValue in
+                        withAnimation(.snappy) {
+                            highlightedCategoryID = newValue?.id
+                            if let newID = newValue?.id {
+                                expandedCategories = [newID]
+                            } else {
+                                expandedCategories.removeAll()
                             }
-                            .padding(.horizontal) // Padding para cada bloco de categoria principal
                         }
                     }
-                    .padding(.vertical)
+                    
+                    if let categoryID = highlightedCategoryID,
+                       let highlightedData = dataParaGrafico.first(where: { $0.id == categoryID }) {
+                        VStack(spacing: 2) {
+                            Image(systemName: highlightedData.icon)
+                                .font(.system(size: 28))
+                                .foregroundColor(highlightedData.color)
+                            Text(highlightedData.nome)
+                                .font(.callout.bold())
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.5)
+                            Text(formatCurrency(highlightedData.total))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(width: 100)
+                    } else {
+                        VStack {
+                            Text(localSelectedTransactionType == 0 ? "Total Gasto" : "Total Recebido")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Text(formatCurrency(dataParaGrafico.reduce(0, { $0 + $1.total })))
+                                .font(.title3.bold())
+                                .foregroundColor(.primary)
+                        }
+                    }
                 }
+                .padding(.horizontal)
+                .padding(.bottom, 5)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    withAnimation(.snappy) {
+                        clearAllSelections()
+                    }
+                }
+
+            } else {
+                VStack {
+                    Spacer()
+                    
+                    Image(systemName: "chart.pie.fill")
+                        .font(.system(size: 50))
+                        .foregroundStyle(Color.secondary.opacity(0.5))
+                        .padding(.bottom, 8)
+                    Text(viewModel.selectedTransactionType == 0 ? "Nenhuma despesa neste mês" : "Nenhuma receita neste mês")
+                        .font(.title3)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.secondary)
+                    
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 180)
+            }
+            
+            ScrollView {
+                    LazyVStack(spacing: 10) {
+                        ForEach(categoriasParaLista, id: \.id) { categoriaModel in
+                            categoriaSectionView(categoriaModel: categoriaModel)
+                        }
+                    }
+                    .padding(.bottom)
             }
         }
         .sheet(item: $selectedSubcategoryDataForSheet) { data in
-            // A SubcategoryDetailView precisará do modelContext se fizer operações de fetch/save
             SubcategoryDetailView(
                 subcategoriaModel: data.subcategoriaModel,
                 isIncome: data.isIncome,
-                viewModel: viewModel // Passa a ExpensesViewModel para a SubcategoryDetailView
+                viewModel: viewModel
             )
-            .environment(\.modelContext, viewModel.modelContext) // Passa o modelContext
+            .environment(\.modelContext, viewModel.modelContext)
         }
         .onAppear {
-            // Sincroniza o picker local com o da ViewModel na primeira aparição
-            // e força um recarregamento se o estado do picker da ViewModel for diferente
             if localSelectedTransactionType != viewModel.selectedTransactionType {
                  localSelectedTransactionType = viewModel.selectedTransactionType
             }
-            // viewModel.loadDisplayableExpenses() // Chamado no onAppear da ExpensesView principal ou via didSet
         }
     }
 
-    // MARK: - Lógica de Dados (agora opera sobre DisplayableExpense via viewModel.transacoesExibidas)
+    @ViewBuilder
+    private func categoriaSectionView(categoriaModel: CategoriaModel) -> some View {
+        VStack(spacing: 0) {
+            HStack {
+                Rectangle()
+                    .fill(categoriaModel.color)
+                    .frame(width: 5, height: 22)
+                    .cornerRadius(2.5)
+                Text(categoriaModel.nome)
+                    .font(.headline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
+                Spacer()
+                Text(formatCurrency(totalParaCategoria(categoriaModel)))
+                    .font(.callout)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.primary)
+                Image(systemName: expandedCategories.contains(categoriaModel.id) ? "chevron.down" : "chevron.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 12)
+            .background(Color(.secondarySystemBackground))
+            .contentShape(Rectangle())
+            .onTapGesture {
+                withAnimation(.snappy) {
+                    let categoriaID = categoriaModel.id
+                    // Ação 1: Destacar/limpar destaque no gráfico E sincronizar rawSelectedChartItem
+                    if highlightedCategoryID == categoriaID {
+                        // Se tocar na categoria que já está destacada E expandida,
+                        // vamos apenas recolhê-la e limpar o destaque do gráfico.
+                        highlightedCategoryID = nil
+                        rawSelectedChartItem = nil
+                        expandedCategories.remove(categoriaID)
+                    } else {
+                        // Se tocar em uma nova categoria, ou uma que não estava destacada
+                        highlightedCategoryID = categoriaID
+                        rawSelectedChartItem = dataParaGrafico.first(where: { $0.id == categoriaID })
+                        // Ação 2: Expandir esta categoria e recolher outras
+                        expandedCategories = [categoriaID]
+                    }
+                }
+            }
 
+            if expandedCategories.contains(categoriaModel.id) {
+                // ... (código das subcategorias permanece o mesmo)
+                VStack(spacing: 0) {
+                    ForEach(subcategoriasParaCategoria(categoriaModel), id: \.id) { subModel in
+                        Button {
+                            selectedSubcategoryDataForSheet = SubcategoryDetailSheetDataSwiftData(
+                                subcategoriaModel: subModel,
+                                isIncome: localSelectedTransactionType == 1
+                            )
+                        } label: {
+                            HStack {
+                                Circle()
+                                    .fill(categoriaModel.color.opacity(0.7))
+                                    .frame(width: 8, height: 8)
+                                    .padding(.leading, 8)
+                                Text(subModel.nome)
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
+                                Spacer()
+                                Text(formatCurrency(totalParaSubcategoria(subModel)))
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                                Image(systemName: "chevron.right")
+                                    .foregroundStyle(Color.gray.opacity(0.5))
+                                    .font(.system(size: 10, weight: .bold))
+                            }
+                            .padding(.leading)
+                            .padding(.trailing)
+                            .padding(.vertical, 10)
+                            .background(Color(.secondarySystemBackground))
+                        }
+                        .buttonStyle(.plain)
+                        if subModel.id != subcategoriasParaCategoria(categoriaModel).last?.id {
+                            Divider().padding(.leading, 35)
+                        }
+                    }
+                }
+                .background(Color(.secondarySystemBackground))
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .padding(.horizontal)
+    }
+    
     private var transacoesRelevantesParaCalculo: [DisplayableExpense] {
-        // Usa a propriedade já filtrada e com recorrências da ViewModel
-        // selectedTransactionType na viewModel já filtra transacoesExibidas
         viewModel.transacoesExibidas
     }
-
-    private var categoriasFiltradas: [CategoriaModel] {
-        let categoriasComNuloRemovido: [CategoriaModel] = transacoesRelevantesParaCalculo.compactMap { $0.categoria }
-        let categoriasUnicas: Set<CategoriaModel> = Set(categoriasComNuloRemovido)
-        
-        // Ordena por total gasto na categoria, decrescente
-        let categoriasOrdenadas: [CategoriaModel] = categoriasUnicas.sorted {
-            totalParaCategoria($0) > totalParaCategoria($1)
-        }
-        return categoriasOrdenadas
+    
+    private func clearAllSelections() {
+        rawSelectedChartItem = nil
+        highlightedCategoryID = nil
+        expandedCategories.removeAll()
     }
+    
+    // Esta função não é mais toggleSingle, ela apenas gerencia a expansão.
+    // A lógica de "apenas uma" está no .onTapGesture da categoriaSectionView.
+    // Ou podemos renomeá-la e ajustar a lógica.
+    // Por ora, vou remover toggleSingleCategoryExpansion e incorporar a lógica no onTapGesture.
 
+    // As funções de cálculo de total permanecem as mesmas
     func subcategoriasParaCategoria(_ categoriaModel: CategoriaModel) -> [SubcategoriaModel] {
         let transacoesDaCategoria = transacoesRelevantesParaCalculo.filter { $0.categoria?.id == categoriaModel.id }
         let subcategorias = transacoesDaCategoria.compactMap { $0.subcategoria }
-        let subcategoriasUnicas = Set(subcategorias)
+        let subcategoriasUnicas = Dictionary(grouping: subcategorias, by: { $0.id })
+            .values.compactMap { $0.first }
         
-        // Ordena por total gasto na subcategoria, decrescente
         return Array(subcategoriasUnicas).sorted {
             totalParaSubcategoria($0) > totalParaSubcategoria($1)
         }
@@ -197,11 +327,12 @@ struct ExpensesPorCategoriaListView: View {
             .reduce(0.0) { $0 + $1.amount }
     }
 
-    func toggleCategory(_ id: UUID) {
+    // toggleCategory agora é a única função para expansão e é chamada pelo onTapGesture
+    func toggleCategory(_ id: UUID) { // Esta função agora se torna a toggleSingleCategoryExpansion
         if expandedCategories.contains(id) {
             expandedCategories.remove(id)
         } else {
-            expandedCategories.insert(id)
+            expandedCategories = [id] // Garante que apenas uma esteja expandida
         }
     }
 }

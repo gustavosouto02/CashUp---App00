@@ -15,7 +15,7 @@ struct CategoryPicker: View {
             Button {
                 isCategorySheetPresented = true
             } label: {
-                HStack(spacing: 12) {
+                HStack {
                     // Verifica se os modelos SwiftData estão selecionados
                     if let subModel = selectedSubcategoryModel,
                        let catModel = selectedCategoryModel { // selectedCategoryModel deve ser o .categoria da subModel
@@ -29,6 +29,10 @@ struct CategoryPicker: View {
                         Text(subModel.nome) // Nome da SubcategoriaModel
                             .font(.title2)
                             .foregroundStyle(.primary)
+                        
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .foregroundStyle(.gray)
                     } else {
                         Image(systemName: "square.grid.2x2")
                             .resizable()
@@ -38,11 +42,11 @@ struct CategoryPicker: View {
                         Text("Selecionar categoria")
                             .font(.title2)
                             .foregroundStyle(.primary)
+                        
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .foregroundStyle(.gray)
                     }
-
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .foregroundStyle(.gray)
                 }
                 .padding(.vertical, 8)
             }
@@ -52,3 +56,4 @@ struct CategoryPicker: View {
         }
     }
 }
+

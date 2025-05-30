@@ -17,10 +17,8 @@ struct DatePickerField: View {
                 .resizable()
                 .frame(width: 24, height: 24)
 
-            Text(formattedDate)
+            Text("Data:")
                 .font(.title2)
-                .minimumScaleFactor(0.5)
-                .lineLimit(1)
 
             Spacer()
             
@@ -29,9 +27,11 @@ struct DatePickerField: View {
                 selection: $selectedDate,
                 displayedComponents: [.date]
             )
+            .padding(.trailing, 45)
             .datePickerStyle(.compact)
             .labelsHidden()
             .frame(maxWidth: 120)
+            .environment(\.locale, Locale(identifier: "pt_BR"))
         }
         Divider()
     }
