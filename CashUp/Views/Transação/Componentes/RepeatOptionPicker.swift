@@ -102,7 +102,7 @@ struct RepeatOptionPicker: View {
                         Text("Opcional: defina uma data para encerrar a repetição ou ela continuará por 1 ano como padrão.")
                             .font(.caption2)
                             .foregroundColor(.orange)
-                            .padding(.leading, 2) // Pequena indentação
+                            .padding(.leading, 2) 
                             .transition(.opacity.combined(with: .move(edge: .top)))
                     }
                 }

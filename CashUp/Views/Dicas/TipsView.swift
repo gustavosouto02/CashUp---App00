@@ -7,7 +7,6 @@
 
 import SwiftUI
 
-// Estrutura auxiliar para definir os dados de cada dica (uso local)
 struct TipInfo: Identifiable {
     let id = UUID()
     let iconName: String
@@ -18,7 +17,6 @@ struct TipInfo: Identifiable {
 
 struct TipsView: View {
     @Environment(\.dismiss) private var dismiss
-    // Dados estáticos para as dicas gerais
     let generalTips: [TipInfo] = [
         TipInfo(iconName: "takeoutbag.and.cup.and.straw.fill",
                 title: "Controle os Gastos com Delivery",
@@ -88,7 +86,6 @@ struct TipsView: View {
                         .padding(.horizontal)
                         .padding(.top, 10)
                     
-                    // Cards de Dicas Gerais
                     ForEach(generalTips) { tip in
                         TipCardView(tip: tip)
                             .padding(.horizontal)

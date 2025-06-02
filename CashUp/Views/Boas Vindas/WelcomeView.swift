@@ -9,10 +9,8 @@
 import SwiftUI
 
 struct WelcomeView: View {
-    // Binding para controlar a exibição desta tela, vindo do CashUpApp
     @Binding var isShowingWelcomeScreen: Bool
     
-    // Duração em segundos que a tela de boas-vindas será exibida
     let welcomeScreenDuration: TimeInterval = 2.5
 
     var body: some View {

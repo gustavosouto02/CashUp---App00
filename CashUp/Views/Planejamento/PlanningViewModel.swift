@@ -64,7 +64,6 @@ class PlanningViewModel: ObservableObject {
             return true
         } catch {
             print("Erro ao salvar contexto após \(operacao): \(error)")
-            // TODO: Considerar um tratamento de erro mais robusto (ex: alertar o usuário)
             return false
         }
     }
@@ -99,7 +98,7 @@ class PlanningViewModel: ObservableObject {
         }
         
         let novaSubPlanejada = SubcategoriaPlanejadaModel(
-            valorPlanejado: 0.0, // Valor inicial
+            valorPlanejado: 0.0,
             subcategoriaOriginal: subcategoriaModel,
             categoriaPlanejada: categoriaPlanejada
         )

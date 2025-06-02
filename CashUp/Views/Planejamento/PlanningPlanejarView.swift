@@ -258,7 +258,6 @@ struct PlanningPlanejarView: View {
             
             if let subcategorias = catPlanModel.subcategoriasPlanejadas, !subcategorias.isEmpty {
                 ForEach(subcategorias.sorted(by: { $0.subcategoriaOriginal?.nome ?? "" < $1.subcategoriaOriginal?.nome ?? ""})) { subPlanModel in
-                    // Certifique-se que SubcategoriaPlanejadaRowView existe
                     SubcategoriaPlanejadaRowView(
                         subPlanejadaModel: subPlanModel,
                         corIconeCategoriaPai: catPlanModel.corCategoriaOriginal,

@@ -29,11 +29,9 @@ struct CashUpApp: App {
 
     var body: some Scene {
         WindowGroup {
-            // ZStack para gerenciar a transição entre a WelcomeView e a HomeView
             ZStack {
                 if isShowingWelcomeScreen {
                     WelcomeView(isShowingWelcomeScreen: $isShowingWelcomeScreen)
-                        // Adiciona uma transição suave de opacidade
                         .transition(.opacity.animation(.easeInOut(duration: 0.5)))
                 } else {
                     HomeView(modelContext: sharedModelContainer.mainContext)
@@ -41,7 +39,7 @@ struct CashUpApp: App {
                         .transition(.opacity.animation(.easeInOut(duration: 0.5)))
                 }
             }
-            .preferredColorScheme(.dark) // Aplica o esquema de cores ao contêiner principal
+            .preferredColorScheme(.dark)
         }
         .modelContainer(sharedModelContainer)
     }

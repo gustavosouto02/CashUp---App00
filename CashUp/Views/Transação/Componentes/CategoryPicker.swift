@@ -9,7 +9,6 @@ import SwiftUI
 import SwiftData
 
 struct CategoryPicker: View {
-    // Bindings agora para os modelos SwiftData
     @Binding var selectedSubcategoryModel: SubcategoriaModel?
     @Binding var selectedCategoryModel: CategoriaModel?
     @Binding var isCategorySheetPresented: Bool
