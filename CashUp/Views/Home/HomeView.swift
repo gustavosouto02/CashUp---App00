@@ -19,6 +19,7 @@ struct HomeView: View {
     @StateObject private var expensesViewModel: ExpensesViewModel
     
     @State private var isAddTransactionPresented = false
+    @State private var isTipsPresented = false
     
     init(modelContext: ModelContext) {
         let planningVM = PlanningViewModel(modelContext: modelContext)
@@ -64,7 +65,7 @@ struct HomeView: View {
             .toolbar {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     Button {
-                        print("Botão de Informações tocado.")
+                        isTipsPresented = true
                     } label: {
                         Image(systemName: "info.circle.fill")
                             .font(.headline)
@@ -80,6 +81,9 @@ struct HomeView: View {
                         .font(.headline)
                     }
                 }
+            }
+            .fullScreenCover(isPresented: $isTipsPresented){
+                TipsView()
             }
             .fullScreenCover(isPresented: $isAddTransactionPresented) {
                 AddTransactionView()

@@ -1,11 +1,11 @@
 {
   "images" : [
     {
+      "filename" : "IconCashUp.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "twinlake@2x.jpg",
       "idiom" : "universal",
       "scale" : "2x"
     },

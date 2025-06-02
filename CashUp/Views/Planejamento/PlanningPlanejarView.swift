@@ -227,6 +227,13 @@ struct PlanningPlanejarView: View {
                 .multilineTextAlignment(.center)
                 .padding()
                 .frame(maxWidth: .infinity, alignment: .center)
+            
+            Text("Para copiar o planejamento para o mês seguinte,\n utilize o botao de documento no topo da tela.")
+               .font(.subheadline)
+               .foregroundStyle(.secondary)
+               .multilineTextAlignment(.center)
+               .padding()
+               .frame(maxWidth: .infinity, alignment: .center)
         } else {
             ForEach(categoriasPlanejadasDoMesQuery) { catPlanModel in
                 categoriaPlanejadaView(catPlanModel)

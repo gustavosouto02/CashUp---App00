@@ -138,32 +138,3 @@ struct AddTransactionView: View {
     }
 }
 
-#Preview {
-    struct PreviewAddTransactionWrapper: View {
-        static var previewContainer: ModelContainer = {
-            let config = ModelConfiguration(isStoredInMemoryOnly: true)
-            do {
-                let container = try ModelContainer(for: Schema([CategoriaModel.self, SubcategoriaModel.self, ExpenseModel.self]), configurations: [config])
-                let context = container.mainContext
-                let catAlim = CategoriaModel(id: UUID(), nome: "Alimentação", icon: "fork.knife", color: .orange)
-                let subRest = SubcategoriaModel(id: UUID(), nome: "Restaurante", icon: "fork.knife.circle", categoria: catAlim, usageCount: 1)
-                catAlim.subcategorias = [subRest]
-                context.insert(catAlim)
-                try! context.save()
-                return container
-            } catch {
-                fatalError("Falha ao criar container para preview de AddTransactionView: \(error)")
-            }
-        }()
-        
-        @StateObject var expensesVMForPreview = ExpensesViewModel(modelContext: previewContainer.mainContext)
-
-        var body: some View {
-            AddTransactionView()
-                .environmentObject(expensesVMForPreview)
-                .modelContainer(PreviewAddTransactionWrapper.previewContainer)
-        }
-    }
-    
-    return PreviewAddTransactionWrapper()
-}

@@ -62,7 +62,6 @@ struct PlanningView: View {
             .toolbar {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
                     Button {
-                        // Agora chama a função para mostrar o alerta de confirmação
                         planningViewModel.confirmCopyCurrentMonthPlanningToNextMonth()
                     } label: {
                         Label("Copiar para Próximo Mês", systemImage: "document.on.document.fill")

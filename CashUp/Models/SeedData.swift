@@ -126,7 +126,7 @@ fileprivate let todasCategoriasSeedInfo: [CategoriaSeedInfo] = [
     CategoriaSeedInfo(
         id: SeedIDs.idDiversos,
         nome: "Diversos",
-        cor: Color(red: 0.65, green: 0.45, blue: 0.25),
+        cor: Color(red: 0.35, green: 0.2, blue: 0.1),
         icon: "puzzlepiece",
         subcategorias: [
             SubcategoriaSeedInfo(id: SeedIDs.idSubCustosBancarios, nome: "Custos Bancários", icon: "dollarsign.bank.building.fill"),
