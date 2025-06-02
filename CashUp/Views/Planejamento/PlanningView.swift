@@ -1,130 +1,117 @@
+//
+//  PlanningView.swift
+//  CashUp
+//
+//  Created by Gustavo Souto Pereira on 19/05/25.
+//
+
 import SwiftUI
+import SwiftData
 
 struct PlanningView: View {
     @Environment(\.sizeCategory) var sizeCategory
-    @ObservedObject var viewModel = PlanningViewModel() // Seu ViewModel principal de planejamento
-    @EnvironmentObject var expensesViewModel: ExpensesViewModel // Adicione o EnvironmentObject
+
+    @EnvironmentObject var planningViewModel: PlanningViewModel
+    @EnvironmentObject var expensesViewModel: ExpensesViewModel
 
     @State private var isEditing: Bool = false
-    @State private var subcategoriasSelecionadas: Set<UUID> = []
+    @State private var subcategoriasPlanejadasSelecionadasParaDelecao: Set<UUID> = []
 
     var body: some View {
+        let _ = Self._printChanges()
+
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 20) {
 
-                    // MARK: - Header: Navegação por mês
                     MonthSelector(
-                        viewModel: MonthSelectorViewModel(selectedMonth: viewModel.currentMonth),
+                        viewModel: MonthSelectorViewModel(selectedMonth: planningViewModel.currentMonth),
                         onMonthChanged: { selectedDate in
-                            viewModel.currentMonth = selectedDate
-                            // Sincroniza o month do expensesViewModel também
-                            expensesViewModel.currentMonth = selectedDate
+                            let newMonth = selectedDate.startOfMonth()
+                            planningViewModel.currentMonth = newMonth
+                            expensesViewModel.currentMonth = newMonth
                         }
                     )
-                    .padding()
+                    .padding(.top, 20)
+                    .padding(.horizontal)
 
-                    // MARK: - Resumo do Planejamento do Mês
-                    // Extraímos este bloco em uma sub-view se for muito grande
-                    PlanningSummarySection(viewModel: viewModel)
-
-                    // MARK: - Seletor Planejar / Restante
-                    Picker("Modo", selection: $viewModel.selectedTab) {
+                    Picker("Modo", selection: $planningViewModel.selectedTab) {
                         Text("Planejar").tag(0)
                         Text("Restante").tag(1)
                     }
                     .pickerStyle(.segmented)
-                    .padding(.horizontal) // Adicionado padding aqui para o picker
+                    .padding(.horizontal)
 
-                    // MARK: - Conteúdo das Abas
-                    // Agora as abas são delegadas a ViewComponents menores
-                    if viewModel.selectedTab == 0 {
+                    if planningViewModel.selectedTab == 0 {
                         PlanningPlanejarView(
-                            viewModel: viewModel,
+                            viewModel: planningViewModel,
                             isEditing: $isEditing,
-                            subcategoriasSelecionadas: $subcategoriasSelecionadas
+                            subcategoriasSelecionadas: $subcategoriasPlanejadasSelecionadasParaDelecao
                         )
-                        .padding(.horizontal) // Adiciona padding horizontal para a sub-view
+                        .id("PlanejarView-\(planningViewModel.currentMonth.timeIntervalSince1970)")
                     } else {
                         PlanningRestanteView(
-                            planningViewModel: viewModel,
-                            expensesViewModel: expensesViewModel // Passe o expensesViewModel aqui
+                            planningViewModel: planningViewModel,
+                            expensesViewModel: expensesViewModel
                         )
-                        .padding(.horizontal) // Adiciona padding horizontal para a sub-view
+                        .id("RestanteView-\(planningViewModel.currentMonth.timeIntervalSince1970)")
                     }
                 }
-                .padding(.top)
-                .padding(.bottom, 24)
             }
             .navigationTitle("Planejamento")
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    HStack {
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    Button {
+                        planningViewModel.confirmCopyCurrentMonthPlanningToNextMonth()
+                    } label: {
+                        Label("Copiar para Próximo Mês", systemImage: "document.on.document.fill")
+                    }
+                }
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    if planningViewModel.selectedTab == 0 {
                         if isEditing {
-                            Button("Apagar") {
-                                viewModel.removerSubcategoriasSelecionadas(subcategoriasSelecionadas)
-                                subcategoriasSelecionadas.removeAll()
+                            Button(action: {
+                                planningViewModel.removerSubcategoriasPlanejadasSelecionadas(idsSubcategoriasPlanejadas: subcategoriasPlanejadasSelecionadasParaDelecao)
+                                subcategoriasPlanejadasSelecionadasParaDelecao.removeAll()
                                 isEditing = false
+                            }) {
+                                Image(systemName: "trash.fill")
                             }
                             .foregroundStyle(.red)
-                            .padding(.trailing, 8)
+                            .disabled(subcategoriasPlanejadasSelecionadasParaDelecao.isEmpty)
                         }
 
                         Button(action: {
                             isEditing.toggle()
                             if !isEditing {
-                                subcategoriasSelecionadas.removeAll()
+                                subcategoriasPlanejadasSelecionadasParaDelecao.removeAll()
                             }
                         }) {
-                            Image(systemName: isEditing ? "checkmark.circle.fill" : "ellipsis.circle")
+                            Text(isEditing ? "Concluir" : "Editar")
                         }
                     }
                 }
             }
-            .overlay(
-                Divider()
-                    .background(Color.gray.opacity(0.6))
-                    .frame(height: 1)
-                    .padding(.top, 2),
-                alignment: .top
-            )
-        }
-    }
-}
-
-// MARK: - Componente para o Resumo do Planejamento
-struct PlanningSummarySection: View {
-    @ObservedObject var viewModel: PlanningViewModel
-
-    var body: some View {
-        Group {
-            if !viewModel.planejamentoDoMesExibicao.isEmpty {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Planejamentos do Mês")
-                        .font(.headline)
-
-                    ForEach(viewModel.planejamentoDoMesExibicao) { item in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(item.descricao)
-                                .font(.subheadline)
-                            Text("Data: \(item.data, style: .date)")
-                                .font(.caption)
-                                .foregroundStyle(.gray)
-                            Text("Valor Planejado: \(item.valorTotalPlanejado, format: .currency(code: "BRL"))")
-                                .font(.caption)
-                        }
-                        .background(Color(.secondarySystemBackground))
-                        .cornerRadius(12)
-                    }
+            .alert(
+                planningViewModel.copyPlanningAlertTitle,
+                isPresented: $planningViewModel.showCopyConfirmationAlert
+            ) {
+                Button("Cancelar", role: .cancel) { }
+                Button("Copiar") {
+                    planningViewModel.executeCopyPlanning()
                 }
-                .padding(.horizontal) // Aplica padding apenas a esta seção
+            } message: {
+                Text(planningViewModel.copyPlanningAlertMessage)
+            }
+            .alert(
+                planningViewModel.copyResultAlertTitle,
+                isPresented: $planningViewModel.showCopyResultAlert
+            ) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(planningViewModel.copyResultAlertMessage)
             }
         }
-        .padding(.bottom, 24) // Espaçamento após o resumo
     }
 }
 
-#Preview {
-    PlanningView()
-        .environmentObject(ExpensesViewModel()) // Certifique-se de injetar no Preview também
-}

@@ -1,24 +1,46 @@
-//
-//  CashUpApp.swift
-//  CashUp
-//
-//  Created by Gustavo Souto Pereira on 08/05/25.
-//
+// Arquivo: CashUp/CashUpApp.swift
+// Abordagem alternativa para .modelContainer e seeding
 
 import SwiftUI
+import SwiftData
 
 @main
 struct CashUpApp: App {
-    @StateObject var expensesViewModel = ExpensesViewModel()
-    @StateObject var planningViewModel = PlanningViewModel()
-    
-    var body: some Scene {
-        WindowGroup {
-            HomeView()
-                .environmentObject(expensesViewModel)
-                .environmentObject(planningViewModel)
-                .preferredColorScheme(.dark)
+    let sharedModelContainer: ModelContainer
+    @State private var isShowingWelcomeScreen: Bool = true
+
+    init() {
+        let schema = Schema([
+            CategoriaModel.self,
+            SubcategoriaModel.self,
+            ExpenseModel.self,
+            CategoriaPlanejadaModel.self,
+            SubcategoriaPlanejadaModel.self
+        ])
+        
+        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+
+        do {
+            sharedModelContainer = try ModelContainer(for: schema, configurations: [modelConfiguration])
+        } catch {
+            fatalError("Não foi possível criar ModelContainer: \(error.localizedDescription)")
         }
     }
-}
 
+    var body: some Scene {
+        WindowGroup {
+            ZStack {
+                if isShowingWelcomeScreen {
+                    WelcomeView(isShowingWelcomeScreen: $isShowingWelcomeScreen)
+                        .transition(.opacity.animation(.easeInOut(duration: 0.5)))
+                } else {
+                    HomeView(modelContext: sharedModelContainer.mainContext)
+                        // Adiciona uma transição suave de opacidade
+                        .transition(.opacity.animation(.easeInOut(duration: 0.5)))
+                }
+            }
+            .preferredColorScheme(.dark)
+        }
+        .modelContainer(sharedModelContainer)
+    }
+}

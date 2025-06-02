@@ -11,17 +11,23 @@ class MonthSelectorViewModel: ObservableObject {
     @Published var selectedMonth: Date = Date()
 
     var displayedMonth: String {
-        selectedMonth.formatted(.dateTime.month(.wide).year(.defaultDigits))
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = Locale(identifier: "pt_BR")
+        dateFormatter.dateFormat = "MMMM yyyy"
+        let formattedString = dateFormatter.string(from: selectedMonth)
+        return formattedString.prefix(1).uppercased() + formattedString.dropFirst()
     }
     
-    init(selectedMonth: Date = Date()) { // Inicializador que aceita uma Date (com valor padrão)
-        self.selectedMonth = selectedMonth
+    init(selectedMonth: Date = Date()) {
+        self.selectedMonth = selectedMonth.startOfMonth()
     }
 
     func navigateMonth(isNext: Bool) {
         let calendar = Calendar.current
-        let components = DateComponents(month: isNext ? 1 : -1)
-        selectedMonth = calendar.date(byAdding: components, to: selectedMonth) ?? selectedMonth
+        
+        if let newMonthBase = calendar.date(byAdding: .month, value: isNext ? 1 : -1, to: selectedMonth) {
+            selectedMonth = newMonthBase.startOfMonth()
+        }
     }
 }
 

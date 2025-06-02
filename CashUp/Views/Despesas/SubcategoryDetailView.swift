@@ -1,51 +1,55 @@
 //
-//  SubcategoryDetailView.swift
-//  CashUp
+//  SubcategoryDetailView.swift
+//  CashUp
 //
-//  Created by Gustavo Souto Pereira on 21/05/25.
+//  Created by Gustavo Souto Pereira on 21/05/25.
 //
 
 import SwiftUI
+import SwiftData
 
-// Struct auxiliar para representar cada seção da lista
-struct ExpenseSection: Identifiable {
-    let id = UUID() // Para conformar a Identifiable
+struct DisplayableExpenseSection: Identifiable {
+    let id = UUID()
     let date: Date
-    let expenses: [Expense]
+    let expenses: [DisplayableExpense]
 }
 
 struct SubcategoryDetailView: View {
-    let subcategoria: Subcategoria
+    let subcategoriaModel: SubcategoriaModel
     let isIncome: Bool
     @ObservedObject var viewModel: ExpensesViewModel
     @Environment(\.dismiss) var dismiss
+    @State private var expenseToDelete: DisplayableExpense? = nil
+    @State private var showRecurrenceDeleteOptions: Bool = false
+
     
-    // Propriedade computada para gerar as seções da lista
-    var sections: [ExpenseSection] {
-        let filteredExpenses = viewModel.expensesDoMes.filter {
-            $0.subcategory.id == subcategoria.id && $0.isIncome == isIncome // Filtra por isIncome
+    var sections: [DisplayableExpenseSection] {
+        let filteredTransactions = viewModel.transacoesExibidas.filter { displayableExpense in
+            displayableExpense.subcategoria?.id == subcategoriaModel.id && displayableExpense.isIncome == isIncome
         }
         
-        let groupedByDate = Dictionary(grouping: filteredExpenses) { expense in
+        let grouped = Dictionary(grouping: filteredTransactions) { expense in
             Calendar.current.startOfDay(for: expense.date)
         }
-        
-        // Mapeia para ExpenseSection e ordena as datas (mais recentes primeiro),
-        // e as despesas dentro de cada seção também são ordenadas por data (mais recentes primeiro).
-        return groupedByDate.keys.sorted(by: { $0 > $1 }).map { date in
-            ExpenseSection(date: date, expenses: groupedByDate[date]!.sorted(by: { $0.date > $1.date }))
+
+        let sortedDates = grouped.keys.sorted(by: { $0 > $1 })
+
+        return sortedDates.map { date in
+            let expenses = grouped[date]?.sorted(by: { $0.date > $1.date }) ?? []
+            return DisplayableExpenseSection(date: date, expenses: expenses)
         }
     }
+
     
     var body: some View {
         NavigationStack {
-            // O conteúdo principal da NavigationStack
-            Group { // Usamos Group para encapsular o condicional e aplicar modificadores a ele.
+            Group {
                 if sections.isEmpty {
                     VStack {
                         Spacer()
-                        Text("Nenhuma transação registrada para esta subcategoria neste mês.")
+                        Text("Nenhuma transação registrada para \(subcategoriaModel.nome) neste mês \(isIncome ? "(receita)" : "(despesa)").")
                             .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
                             .padding()
                         Spacer()
                     }
@@ -53,42 +57,44 @@ struct SubcategoryDetailView: View {
                     List {
                         ForEach(sections) { section in
                             Section(header: Text(formatSectionDate(section.date))) {
-                                ForEach(section.expenses) { expense in
-                                    // Linha de despesa
-                                    HStack {
-                                        // Ícone da subcategoria
-                                        CategoriasViewIcon(systemName: subcategoria.icon, cor: expense.category.color, size: 24)
-
-                                        
-                                        VStack(alignment: .leading) {
-                                            // Mantendo a lógica original do VStack da descrição
-                                            if expense.description.isEmpty {
-                                                Text(subcategoria.nome)
-                                                    .font(.headline)
-                                            } else {
-                                                Text(subcategoria.nome)
-                                                    .font(.headline)
-                                                Text(expense.description)
-                                                    .font(.subheadline)
-                                                    .foregroundStyle(.secondary)
-                                            }
-                                        }
-                                        
-                                        Spacer()
-                                        
-                                        Text(formatCurrency(expense.amount))
-                                            .font(.headline)
-                                            .fontWeight(.semibold)
-                                            .foregroundStyle(expense.isIncome ? .green : .red)
-                                    }
-                                    .padding(.vertical, 8)
+                                ForEach(section.expenses) { displayableExpense in
+                                    DisplayableExpenseRow(expense: displayableExpense)
                                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                         Button(role: .destructive) {
-                                            viewModel.removeExpense(expense)
+                                            if displayableExpense.isRecurringInstance && displayableExpense.originalExpenseID != nil {
+                                                self.expenseToDelete = displayableExpense
+                                                self.showRecurrenceDeleteOptions = true
+                                            } else {
+                                                viewModel.removeExpense(displayableExpense, scope: .entireSeries)
+                                            }
                                         } label: {
                                             Label("Excluir", systemImage: "trash")
                                         }
                                     }
+                                    .confirmationDialog(
+                                        "Apagar Transação Recorrente",
+                                        isPresented: $showRecurrenceDeleteOptions,
+                                        presenting: expenseToDelete
+                                    ) { expense in
+                                        Button("Apagar somente esta ocorrência") {
+                                            viewModel.removeExpense(expense, scope: .thisOccurrenceOnly)
+                                            self.expenseToDelete = nil
+                                        }
+                                        Button("Apagar esta e todas as futuras") {
+                                            viewModel.removeExpense(expense, scope: .thisAndAllFutureOccurrences)
+                                            self.expenseToDelete = nil
+                                        }
+                                        Button("Apagar toda a série", role: .destructive) {
+                                            viewModel.removeExpense(expense, scope: .entireSeries)
+                                            self.expenseToDelete = nil
+                                        }
+                                        Button("Cancelar", role: .cancel) {
+                                            self.expenseToDelete = nil
+                                        }
+                                    } message: { expense in
+                                        Text("A transação \"\(expense.expenseDescription)\" de \(formatCurrency(expense.amount)) em \(expense.date.formatted(date: .numeric, time: .omitted)) é recorrente. Como você gostaria de apagá-la?")
+                                    }
+
                                 }
                             }
                         }
@@ -96,7 +102,7 @@ struct SubcategoryDetailView: View {
                     .listStyle(.plain)
                 }
             }
-            .navigationTitle(subcategoria.nome)
+            .navigationTitle(subcategoriaModel.nome)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {

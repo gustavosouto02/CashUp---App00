@@ -1,182 +1,224 @@
+//
+//  PlanningViewModel.swift
+//  CashUp
+//
+//  Created by Gustavo Souto Pereira on 19/05/25.
+//
+
 import SwiftUI
 import Foundation
 import Combine
+import SwiftData
 
+@MainActor
 class PlanningViewModel: ObservableObject {
-    // MARK: - Public Properties
+
+    var modelContext: ModelContext
 
     @Published var selectedTab: Int = 0
-    @Published var categorias: [Categoria] = []
-    @Published var selectedCategoria: Categoria?
-    @Published var selectedSubcategoria: Subcategoria?
-
-    @Published var categoriasPlanejadas: [CategoriaPlanejada] = [] {
+    @Published var currentMonth: Date {
         didSet {
-            salvarCategoriasPlanejadas()
-        }
-    }
-
-    @Published var planejamentoTotal: [Planejamento] = [] {
-        didSet {
-            filterPlanningForDisplay()
-        }
-    }
-
-    @Published var planejamentoDoMesExibicao: [Planejamento] = []
-
-    @Published var currentMonth: Date { // Remova a atribuição padrão aqui
-        didSet {
-            // Este didSet será chamado apenas após a inicialização completa do objeto
-            // e cada vez que currentMonth for alterado.
-            currentMesAno = formatador.string(from: currentMonth)
-            carregarCategoriasPlanejadas()
-            carregarPlanejamento()
-            filterPlanningForDisplay()
-        }
-    }
-
-    private let availableCategories: [Categoria] = CategoriasData.todas
-    private let planningKeyPrefix = "planejamentoDoMes_"
-
-    // MARK: - Private Properties
-
-    private var currentMesAno: String // Agora sem atribuição inicial
-    private let formatador: DateFormatter = {
-        let df = DateFormatter()
-        df.dateFormat = "yyyy-MM"
-        return df
-    }()
-
-    // MARK: - Init
-
-    init() {
-        let now = Date()
-        let initialMonth = now.startOfMonth() // Calcule o mês inicial
-
-        // 1. Inicialize currentMonth diretamente usando o Published wrapper.
-        // O didSet não será chamado durante esta inicialização.
-        _currentMonth = Published(wrappedValue: initialMonth)
-
-        // 2. Inicialize currentMesAno a partir do valor que você usou para currentMonth.
-        // Isso garante que currentMesAno seja inicializado ANTES de qualquer uso de 'self'
-        // que envolva a própria propriedade `currentMonth` ou seu didSet.
-        self.currentMesAno = formatador.string(from: initialMonth)
-
-        // 3. Agora que todas as propriedades armazenadas estão inicializadas,
-        // você pode chamar métodos que dependem de 'self' ou acessar outras propriedades.
-        carregarCategoriasPlanejadas()
-        carregarPlanejamento()
-        filterPlanningForDisplay()
-    }
-
-    // MARK: - Métodos de Planejamento
-
-    func adicionarPlanejamento(descricao: String, valor: Double) {
-        let novo = Planejamento(data: currentMonth, descricao: descricao, valorTotalPlanejado: valor)
-        planejamentoTotal.append(novo)
-        // filterPlanningForDisplay() e salvarPlanejamento() são chamados pelo didSet de planejamentoTotal
-        // não precisa chamar aqui também
-    }
-
-    func zerarPlanejamentoDoMes() {
-        planejamentoTotal = []
-        categoriasPlanejadas = []
-        salvarPlanejamento()
-        salvarCategoriasPlanejadas()
-        // filterPlanningForDisplay() é chamado pelo didSet de planejamentoTotal
-    }
-
-    func navigateMonth(isNext: Bool) {
-        let calendar = Calendar.current
-        if let newDate = calendar.date(byAdding: .month, value: isNext ? 1 : -1, to: currentMonth) {
-            currentMonth = newDate.startOfMonth() // didSet de currentMonth fará o resto
-        }
-    }
-
-    // MARK: - Gerenciamento de Categorias Planejadas
-
-    func getCategoriasPlanejadasForCurrentMonth() -> [CategoriaPlanejada] {
-        return categoriasPlanejadas.filter {
-            Calendar.current.isDate($0.mesAno, equalTo: currentMonth, toGranularity: .month)
-        }
-    }
-
-    func adicionarSubcategoria(_ sub: Subcategoria, to categoria: Categoria) -> Bool {
-        if let index = categoriasPlanejadas.firstIndex(where: {
-            Calendar.current.isDate($0.mesAno, equalTo: currentMonth, toGranularity: .month) && $0.categoria.id == categoria.id
-        }) {
-            if categoriasPlanejadas[index].subcategoriasPlanejadas.contains(where: { $0.subcategoria.id == sub.id }) {
-                print("Subcategoria '\(sub.nome)' já existe no planejamento para este mês.")
-                return false
-            } else {
-                var categoriaToUpdate = categoriasPlanejadas[index]
-                let novaSubPlanejada = SubcategoriaPlanejada(subcategoria: sub, valorPlanejado: 0.0)
-                categoriaToUpdate.subcategoriasPlanejadas.append(novaSubPlanejada)
-                categoriasPlanejadas[index] = categoriaToUpdate
-                return true
+            if oldValue.startOfMonth() != currentMonth.startOfMonth() {
+                objectWillChange.send()
             }
-        } else {
-            let novaCategoria = CategoriaPlanejada(
-                categoria: categoria,
-                subcategoriasPlanejadas: [SubcategoriaPlanejada(subcategoria: sub, valorPlanejado: 0.0)],
-                mesAno: currentMonth.startOfMonth()
-            )
-            categoriasPlanejadas.append(novaCategoria)
+        }
+    }
+
+    @Published var copyPlanningAlertTitle: String = ""
+    @Published var copyPlanningAlertMessage: String = ""
+    @Published var showCopyConfirmationAlert: Bool = false
+    @Published var showCopyResultAlert: Bool = false
+    @Published var copyResultAlertTitle: String = ""
+    @Published var copyResultAlertMessage: String = ""
+
+    init(modelContext: ModelContext) {
+        self.modelContext = modelContext
+        let now = Date()
+        _currentMonth = Published(initialValue: now.startOfMonth())
+    }
+
+    // MARK: - Gerenciamento de Categorias e Subcategorias Planejadas
+
+    func getCategoriasPlanejadasForCurrentMonth() -> [CategoriaPlanejadaModel] {
+        let monthToFetch = currentMonth.startOfMonth()
+        let predicate = #Predicate<CategoriaPlanejadaModel> {
+            $0.mesAno == monthToFetch
+        }
+        let sortDescriptors = [SortDescriptor(\CategoriaPlanejadaModel.categoriaOriginal?.nome, order: .forward)]
+        
+        let fetchDescriptor = FetchDescriptor<CategoriaPlanejadaModel>(predicate: predicate, sortBy: sortDescriptors)
+        
+        do {
+            return try modelContext.fetch(fetchDescriptor)
+        } catch {
+            print("Erro ao buscar CategoriaPlanejadaModel para o mês: \(error)")
+            return []
+        }
+    }
+    
+    private func salvarContexto(operacao: String = "Operação Desconhecida") -> Bool {
+        do {
+            try modelContext.save()
+            print("Contexto salvo com sucesso após: \(operacao)")
+            objectWillChange.send()
             return true
+        } catch {
+            print("Erro ao salvar contexto após \(operacao): \(error)")
+            return false
         }
     }
 
-    func removerSubcategoriasSelecionadas(_ ids: Set<UUID>) {
-        for (catIndex, categoria) in categoriasPlanejadas.enumerated() {
-            let novasSubs = categoria.subcategoriasPlanejadas.filter { !ids.contains($0.id) }
-            categoriasPlanejadas[catIndex].subcategoriasPlanejadas = novasSubs
+    func adicionarSubcategoriaAoPlanejamento(subcategoriaModel: SubcategoriaModel,
+                                            toCategoriaModel: CategoriaModel) -> Bool {
+        let mesReferencia = currentMonth.startOfMonth()
+        let targetCategoriaID = toCategoriaModel.id
+
+        let predicateExistingCatPlan = #Predicate<CategoriaPlanejadaModel> { catPlan in
+            catPlan.mesAno == mesReferencia &&
+            (catPlan.categoriaOriginal.flatMap { $0.id } == targetCategoriaID)
         }
-        categoriasPlanejadas.removeAll { $0.subcategoriasPlanejadas.isEmpty }
+        let fetchDescriptorCatPlan = FetchDescriptor(predicate: predicateExistingCatPlan)
+        
+        var categoriaPlanejadaExistente: CategoriaPlanejadaModel?
+        do {
+            categoriaPlanejadaExistente = try modelContext.fetch(fetchDescriptorCatPlan).first
+        } catch {
+            print("Erro ao buscar CategoriaPlanejadaModel existente: \(error)")
+            return false
+        }
+
+        guard let categoriaPlanejada = categoriaPlanejadaExistente else {
+            print("Erro lógico: Tentando adicionar subcategoria a uma CategoriaPlanejadaModel que não existe para o mês e categoria. Use adicionarNovaCategoriaAoPlanejamento ou crie a CategoriaPlanejada primeiro.")
+            return false
+        }
+
+        if categoriaPlanejada.subcategoriasPlanejadas?.contains(where: { $0.subcategoriaOriginal?.id == subcategoriaModel.id }) == true {
+            print("Subcategoria '\(subcategoriaModel.nome)' já existe no planejamento para '\(categoriaPlanejada.nomeCategoriaOriginal)' este mês.")
+            return false
+        }
+        
+        let novaSubPlanejada = SubcategoriaPlanejadaModel(
+            valorPlanejado: 0.0,
+            subcategoriaOriginal: subcategoriaModel,
+            categoriaPlanejada: categoriaPlanejada
+        )
+
+        if categoriaPlanejada.subcategoriasPlanejadas == nil {
+            categoriaPlanejada.subcategoriasPlanejadas = []
+        }
+        categoriaPlanejada.subcategoriasPlanejadas?.append(novaSubPlanejada)
+        
+        print("Subcategoria '\(subcategoriaModel.nome)' adicionada ao planejamento de '\(categoriaPlanejada.nomeCategoriaOriginal)'.")
+        return salvarContexto(operacao: "adicionarSubcategoriaAoPlanejamento")
+    }
+    
+    func adicionarNovaCategoriaAoPlanejamento(categoriaModel: CategoriaModel,
+                                            comSubcategoriaInicial subcategoriaModel: SubcategoriaModel) -> Bool {
+        let mesReferencia = currentMonth.startOfMonth()
+        let targetCategoriaID = categoriaModel.id
+
+        let predicateExistingCatPlan = #Predicate<CategoriaPlanejadaModel> { catPlan in
+            catPlan.mesAno == mesReferencia &&
+            (catPlan.categoriaOriginal.flatMap { $0.id } == targetCategoriaID)
+        }
+        let fetchDescriptorCatPlan = FetchDescriptor(predicate: predicateExistingCatPlan)
+        
+        do {
+            if (try modelContext.fetch(fetchDescriptorCatPlan).first) != nil {
+                print("Categoria '\(categoriaModel.nome)' já possui um planejamento. Adicionando subcategoria '\(subcategoriaModel.nome)' ao planejamento existente.")
+                return adicionarSubcategoriaAoPlanejamento(subcategoriaModel: subcategoriaModel, toCategoriaModel: categoriaModel)
+            }
+        } catch {
+            print("Erro ao verificar CategoriaPlanejadaModel existente: \(error)")
+            return false
+        }
+        
+        let novaCategoriaPlanejada = CategoriaPlanejadaModel(mesAno: mesReferencia, categoriaOriginal: categoriaModel)
+        modelContext.insert(novaCategoriaPlanejada)
+
+        let novaSubPlanejada = SubcategoriaPlanejadaModel(
+            valorPlanejado: 0.0,
+            subcategoriaOriginal: subcategoriaModel,
+            categoriaPlanejada: novaCategoriaPlanejada
+        )
+
+        novaCategoriaPlanejada.subcategoriasPlanejadas = [novaSubPlanejada]
+        
+        print("Nova categoria '\(categoriaModel.nome)' com subcategoria inicial '\(subcategoriaModel.nome)' adicionada ao planejamento.")
+        return salvarContexto(operacao: "adicionarNovaCategoriaAoPlanejamento")
     }
 
-    // MARK: - Atualização de Valor Planejado
-    func atualizarValorPlanejado(
-        paraCategoria catItem: CategoriaPlanejada,
-        subItem: SubcategoriaPlanejada,
-        comNovoValor novoValorString: String
-    ) {
-        if let catIndex = categoriasPlanejadas.firstIndex(where: { $0.id == catItem.id }),
-           let subIndex = categoriasPlanejadas[catIndex].subcategoriasPlanejadas.firstIndex(where: { $0.id == subItem.id }) {
-
-            let cleanedValueString = novoValorString.replacingOccurrences(of: ",", with: ".")
-                                                    .filter { "0123456789.".contains($0) }
-
-            let novoValorDouble = Double(cleanedValueString) ?? 0.0
-            categoriasPlanejadas[catIndex].subcategoriasPlanejadas[subIndex].valorPlanejado = novoValorDouble
+    func removerSubcategoriasPlanejadasSelecionadas(idsSubcategoriasPlanejadas: Set<UUID>) {
+        guard !idsSubcategoriasPlanejadas.isEmpty else {
+            print("Nenhuma subcategoria selecionada para deleção.")
+            return
         }
+
+        var affectedParentCategorias = Set<CategoriaPlanejadaModel>()
+
+        for id in idsSubcategoriasPlanejadas {
+            let predicate = #Predicate<SubcategoriaPlanejadaModel> { $0.id == id }
+            var fetchDescriptor = FetchDescriptor<SubcategoriaPlanejadaModel>(predicate: predicate)
+            fetchDescriptor.fetchLimit = 1
+            
+            do {
+                if let subParaDeletar = try modelContext.fetch(fetchDescriptor).first {
+                    if let parent = subParaDeletar.categoriaPlanejada {
+                        affectedParentCategorias.insert(parent)
+                    }
+                    modelContext.delete(subParaDeletar)
+                    print("SubcategoriaPlanejadaModel com ID \(id) marcada para deleção.")
+                }
+            } catch {
+                print("Erro ao buscar SubcategoriaPlanejadaModel (ID: \(id)) para deleção: \(error)")
+            }
+        }
+        
+        for catPlan in affectedParentCategorias {
+            let remainingSubcategories = catPlan.subcategoriasPlanejadas?.filter { subPlan in
+                !idsSubcategoriasPlanejadas.contains(subPlan.id)
+            }
+
+            if remainingSubcategories?.isEmpty ?? true {
+                print("CategoriaPlanejadaModel '\(catPlan.nomeCategoriaOriginal)' ficou vazia e será deletada.")
+                modelContext.delete(catPlan)
+            }
+        }
+
+        _ = salvarContexto(operacao: "removerSubcategoriasPlanejadasSelecionadas")
+    }
+    
+    func zerarPlanejamentoDoMes() {
+        let planejamentosDoMes = getCategoriasPlanejadasForCurrentMonth()
+        if planejamentosDoMes.isEmpty {
+            print("Nenhum planejamento para zerar neste mês.")
+            return
+        }
+        for planejamento in planejamentosDoMes {
+            modelContext.delete(planejamento)
+        }
+        print("Todos os planejamentos para o mês \(currentMonth.formatted(.dateTime.month(.wide).year())) foram marcados para deleção.")
+        _ = salvarContexto(operacao: "zerarPlanejamentoDoMes")
     }
 
     // MARK: - Cálculos
-    func totalCategoria(categoria: CategoriaPlanejada) -> Double {
-        categoria.subcategoriasPlanejadas
-            .map { $0.valorPlanejado }
-            .reduce(0, +)
+    func totalParaCategoriaPlanejada(_ categoriaPlanejada: CategoriaPlanejadaModel) -> Double {
+        return categoriaPlanejada.subcategoriasPlanejadas?.reduce(0) { $0 + $1.valorPlanejado } ?? 0.0
     }
 
-    func valorTotalPlanejado(categorias: [CategoriaPlanejada]) -> Double {
-        return categorias.filter {
-            Calendar.current.isDate($0.mesAno, equalTo: currentMonth, toGranularity: .month)
-        }
-        .map { totalCategoria(categoria: $0) }
-        .reduce(0, +)
+    func valorTotalPlanejadoParaMesAtual() -> Double {
+        let categoriasDoMes = getCategoriasPlanejadasForCurrentMonth()
+        return categoriasDoMes.reduce(0) { $0 + totalParaCategoriaPlanejada($1) }
     }
 
-    func calcularPorcentagemTotal(categoria: CategoriaPlanejada) -> Double {
-        let totalCategoriaValue = totalCategoria(categoria: categoria)
-        let totalPlanejado = valorTotalPlanejado(categorias: getCategoriasPlanejadasForCurrentMonth())
-        guard totalPlanejado > 0 else { return 0 }
-        return (totalCategoriaValue / totalPlanejado) * 100
+    func calcularPorcentagemTotal(paraCategoriaPlanejada categoria: CategoriaPlanejadaModel) -> Double {
+        let totalCategoriaValue = totalParaCategoriaPlanejada(categoria)
+        let totalPlanejadoMesValor = valorTotalPlanejadoParaMesAtual()
+        guard totalPlanejadoMesValor > 0 else { return 0 }
+        return (totalCategoriaValue / totalPlanejadoMesValor) * 100
     }
 
-    func bindingParaValorPlanejado(
-        categoria: CategoriaPlanejada,
-        subcategoria: SubcategoriaPlanejada
-    ) -> Binding<String> {
+    func bindingParaValorPlanejado(subItem: SubcategoriaPlanejadaModel) -> Binding<String> {
         Binding<String>(
             get: {
                 let formatter = NumberFormatter()
@@ -184,104 +226,173 @@ class PlanningViewModel: ObservableObject {
                 formatter.maximumFractionDigits = 2
                 formatter.minimumFractionDigits = 2
                 formatter.locale = Locale(identifier: "pt_BR")
-                return formatter.string(from: NSNumber(value: subcategoria.valorPlanejado)) ?? ""
+                return formatter.string(from: NSNumber(value: subItem.valorPlanejado)) ?? "0,00"
             },
             set: { [self] novoValorString in
-                atualizarValorPlanejado(
-                    paraCategoria: categoria,
-                    subItem: subcategoria,
-                    comNovoValor: novoValorString
-                )
+                let formatter = NumberFormatter()
+                formatter.numberStyle = .decimal
+                formatter.locale = Locale(identifier: "pt_BR")
+
+                if let numero = formatter.number(from: novoValorString) {
+                    subItem.valorPlanejado = numero.doubleValue
+                } else {
+                    let cleanedString = novoValorString.replacingOccurrences(of: ",", with: ".")
+                    if let doubleValue = Double(cleanedString) {
+                        subItem.valorPlanejado = doubleValue
+                    } else {
+
+                        print("Input inválido para valor planejado: \(novoValorString)")
+                    }
+                }
+                objectWillChange.send()
             }
         )
     }
-
-    // MARK: - Filter for Display
-    private func filterPlanningForDisplay() {
-        self.planejamentoDoMesExibicao = self.planejamentoTotal.filter {
-            Calendar.current.isDate($0.data, equalTo: self.currentMonth, toGranularity: .month)
+    
+    func navigateMonth(isNext: Bool) {
+        let calendar = Calendar.current
+        if let newDate = calendar.date(byAdding: .month, value: isNext ? 1 : -1, to: currentMonth) {
+            currentMonth = newDate.startOfMonth()
         }
     }
-
-    // MARK: - UserDefaults (Categorias Planejadas)
-    private func salvarCategoriasPlanejadas() {
-        let key = "categoriasPlanejadas-\(currentMesAno)"
-        if let data = try? JSONEncoder().encode(categoriasPlanejadas) {
-            UserDefaults.standard.set(data, forKey: key)
+    
+    func confirmCopyCurrentMonthPlanningToNextMonth() {
+        let currentMonthStart = currentMonth.startOfMonth()
+        guard let nextMonthDateUnsafe = Calendar.current.date(byAdding: .month, value: 1, to: currentMonthStart) else {
+            self.copyResultAlertTitle = "Erro"
+            self.copyResultAlertMessage = "Não foi possível determinar o próximo mês."
+            self.showCopyResultAlert = true
+            return
         }
-    }
+        let nextMonthStart = nextMonthDateUnsafe.startOfMonth()
 
-    private func carregarCategoriasPlanejadas() {
-        let key = "categoriasPlanejadas-\(currentMesAno)"
-        if let data = UserDefaults.standard.data(forKey: key),
-           let carregadas = try? JSONDecoder().decode([CategoriaPlanejada].self, from: data) {
-            categoriasPlanejadas = carregadas
-        } else {
-            categoriasPlanejadas = []
+        let ptBRLocale = Locale(identifier: "pt_BR")
+
+        let currentMonthFormatted = currentMonthStart.formatted(.dateTime.month(.wide).year().locale(ptBRLocale))
+        let nextMonthFormatted = nextMonthStart.formatted(.dateTime.month(.wide).year().locale(ptBRLocale))
+        
+        let categoriasPlanejadasAtuais = getCategoriasPlanejadasForCurrentMonth()
+        if categoriasPlanejadasAtuais.isEmpty {
+            self.copyResultAlertTitle = "Nenhum Planejamento"
+            self.copyResultAlertMessage = "Não há planejamento em \(currentMonthFormatted) para copiar."
+            self.showCopyResultAlert = true
+            return
         }
+
+        self.copyPlanningAlertTitle = "Copiar Planejamento"
+        self.copyPlanningAlertMessage = "Deseja copiar o planejamento de \(currentMonthFormatted) para \(nextMonthFormatted)?"
+        self.showCopyConfirmationAlert = true
     }
 
-    // MARK: - UserDefaults (Planejamento Geral)
-    private func salvarPlanejamento() {
-        let key = "planejamentosTotal"
-        if let data = try? JSONEncoder().encode(planejamentoTotal) {
-            UserDefaults.standard.set(data, forKey: key)
+    func executeCopyPlanning() {
+        let result = copyCurrentMonthPlanningToNextMonth()
+        self.copyResultAlertTitle = result.title
+        self.copyResultAlertMessage = result.message
+        self.showCopyResultAlert = true
+    }
+
+    func copyCurrentMonthPlanningToNextMonth() -> (title: String, message: String) {
+        let currentMonthStart = currentMonth.startOfMonth()
+        guard let nextMonthDateUnsafe = Calendar.current.date(byAdding: .month, value: 1, to: currentMonthStart) else {
+            return ("Erro", "Não foi possível determinar o próximo mês.")
         }
-    }
+        let nextMonthStart = nextMonthDateUnsafe.startOfMonth()
+        
+        let ptBRLocale = Locale(identifier: "pt_BR")
 
-    private func carregarPlanejamento() {
-        let key = "planejamentosTotal"
-        if let data = UserDefaults.standard.data(forKey: key),
-           let carregados = try? JSONDecoder().decode([Planejamento].self, from: data) {
-            planejamentoTotal = carregados
-        } else {
-            planejamentoTotal = []
+        let currentMonthPredicate = #Predicate<CategoriaPlanejadaModel> { $0.mesAno == currentMonthStart }
+        let currentMonthFetchDescriptor = FetchDescriptor(predicate: currentMonthPredicate, sortBy: [SortDescriptor(\CategoriaPlanejadaModel.categoriaOriginal?.nome)])
+        let categoriasPlanejadasAtuais: [CategoriaPlanejadaModel]
+        do {
+            categoriasPlanejadasAtuais = try modelContext.fetch(currentMonthFetchDescriptor)
+        } catch {
+            print("Erro ao buscar planejamento do mês atual: \(error)")
+            return ("Erro", "Falha ao buscar planejamento atual.")
         }
-    }
-}
 
-// MARK: - Structs de Dados (Mantenha as structs separadas para organização)
+        if categoriasPlanejadasAtuais.isEmpty {
+            return ("Nenhum Planejamento", "Não há planejamento no mês atual para copiar.")
+        }
 
-struct Planejamento: Identifiable, Codable, Equatable {
-    let id: UUID
-    let data: Date
-    let descricao: String
-    let mesAno: String
-    var valorTotalPlanejado: Double
+        let nextMonthPredicate = #Predicate<CategoriaPlanejadaModel> { $0.mesAno == nextMonthStart }
+        let nextMonthFetchDescriptor = FetchDescriptor(predicate: nextMonthPredicate, sortBy: [SortDescriptor(\CategoriaPlanejadaModel.categoriaOriginal?.nome)])
+        let categoriasPlanejadasProximoMesExistentes: [CategoriaPlanejadaModel]
+        do {
+            categoriasPlanejadasProximoMesExistentes = try modelContext.fetch(nextMonthFetchDescriptor)
+        } catch {
+            print("Erro ao buscar planejamento do próximo mês: \(error)")
+            return ("Erro", "Falha ao verificar planejamento existente no próximo mês.")
+        }
 
-    init(id: UUID = UUID(), data: Date, descricao: String, valorTotalPlanejado: Double) {
-        self.id = id
-        self.data = data
-        self.descricao = descricao
-        self.valorTotalPlanejado = valorTotalPlanejado
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM"
-        self.mesAno = formatter.string(from: data)
-    }
-}
+        var countCopied = 0
+        var countSkipped = 0
+        var skippedCategoryNames: [String] = []
 
-struct SubcategoriaPlanejada: Identifiable, Codable, Equatable {
-    let id: UUID
-    var subcategoria: Subcategoria // Certifique-se que Subcategoria é Codable
-    var valorPlanejado: Double
+        for categoriaAtualPlanejada in categoriasPlanejadasAtuais {
+            guard let categoriaOriginal = categoriaAtualPlanejada.categoriaOriginal else {
+                print("Aviso: Categoria planejada atual (ID: \(categoriaAtualPlanejada.id)) sem categoria original. Pulando.")
+                continue
+            }
 
-    init(subcategoria: Subcategoria, valorPlanejado: Double) {
-        self.id = UUID()
-        self.subcategoria = subcategoria
-        self.valorPlanejado = valorPlanejado
-    }
-}
+            if categoriasPlanejadasProximoMesExistentes.contains(where: { $0.categoriaOriginal?.id == categoriaOriginal.id }) {
+                print("Planejamento para '\(categoriaOriginal.nome)' já existe no próximo mês. Pulando.")
+                countSkipped += 1
+                skippedCategoryNames.append(categoriaOriginal.nome)
+                continue
+            }
 
-struct CategoriaPlanejada: Identifiable, Codable, Equatable {
-    let id: UUID
-    var categoria: Categoria // Certifique-se que Categoria é Codable
-    var subcategoriasPlanejadas: [SubcategoriaPlanejada]
-    var mesAno: Date
+            let novaCategoriaPlanejadaProximoMes = CategoriaPlanejadaModel(
+                mesAno: nextMonthStart,
+                categoriaOriginal: categoriaOriginal
+            )
+            modelContext.insert(novaCategoriaPlanejadaProximoMes)
 
-    init(id: UUID = UUID(), categoria: Categoria, subcategoriasPlanejadas: [SubcategoriaPlanejada], mesAno: Date) {
-        self.id = id
-        self.categoria = categoria
-        self.subcategoriasPlanejadas = subcategoriasPlanejadas
-        self.mesAno = mesAno
+            var novasSubcategoriasPlanejadas: [SubcategoriaPlanejadaModel] = []
+            if let subcategoriasAtuais = categoriaAtualPlanejada.subcategoriasPlanejadas {
+                for subAtualPlanejada in subcategoriasAtuais {
+                    guard let subcategoriaOriginal = subAtualPlanejada.subcategoriaOriginal else {
+                        print("Aviso: Subcategoria planejada (ID: \(subAtualPlanejada.id)) sem subcategoria original. Pulando.")
+                        continue
+                    }
+                    let novaSubcategoriaProximoMes = SubcategoriaPlanejadaModel(
+                        valorPlanejado: subAtualPlanejada.valorPlanejado,
+                        subcategoriaOriginal: subcategoriaOriginal,
+                        categoriaPlanejada: novaCategoriaPlanejadaProximoMes
+                    )
+                    novasSubcategoriasPlanejadas.append(novaSubcategoriaProximoMes)
+                }
+            }
+            novaCategoriaPlanejadaProximoMes.subcategoriasPlanejadas = novasSubcategoriasPlanejadas
+            countCopied += 1
+        }
+        
+        let proximoMesFormatado = nextMonthStart.formatted(.dateTime.month(.wide).year().locale(ptBRLocale))
+
+        if countCopied == 0 && countSkipped == 0 && !categoriasPlanejadasAtuais.isEmpty {
+             return ("Nenhuma Ação", "Nenhuma categoria válida foi encontrada para copiar (verifique se possuem categorias originais associadas).")
+        }
+        if countCopied == 0 && countSkipped > 0 {
+            return ("Nenhuma Categoria Copiada", "\(countSkipped) categoria(s) (\(skippedCategoryNames.joined(separator: ", "))) já existia(m) em \(proximoMesFormatado) e foi(ram) pulada(s). Nenhuma nova categoria foi copiada.")
+        }
+
+        do {
+            try modelContext.save()
+            objectWillChange.send()
+
+            let title = "Sucesso"
+            var message = ""
+            
+            if countCopied > 0 && countSkipped > 0 {
+                message = "\(countCopied) categoria(s) copiada(s) para \(proximoMesFormatado).\n\(countSkipped) categoria(s) (\(skippedCategoryNames.joined(separator: ", "))) pulada(s) pois já existiam."
+            } else if countCopied > 0 {
+                message = "\(countCopied) categoria(s) planejada(s) copiada(s) com sucesso para \(proximoMesFormatado)."
+            }
+            
+            return (title, message.isEmpty ? "Nenhuma ação de cópia necessitou ser realizada." : message)
+
+        } catch {
+            print("Erro ao salvar o planejamento copiado: \(error.localizedDescription)")
+            return ("Erro", "Falha ao salvar o planejamento copiado: \(error.localizedDescription)")
+        }
     }
 }

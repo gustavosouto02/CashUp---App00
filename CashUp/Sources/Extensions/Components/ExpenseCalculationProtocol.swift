@@ -7,8 +7,9 @@
 
 import Foundation
 
+@MainActor
 protocol ExpenseCalculation {
-    func calcularTotalGastoEmCategoriasPlanejadas(paraMes mes: Date, categoriasPlanejadas: [CategoriaPlanejada]) -> Double
-    func calcularTotalGastoParaCategoria(_ categoriaPlanejada: CategoriaPlanejada, paraMes mes: Date) -> Double
-    func calcularTotalGastoParaSubcategoria(_ subcategoriaPlanejada: SubcategoriaPlanejada, paraMes mes: Date) -> Double
+    func calcularTotalGastoEmCategoriasPlanejadas(paraMes mes: Date, categoriasPlanejadas: [CategoriaPlanejadaModel]) -> Double
+    func calcularTotalGastoParaCategoria(_ categoriaPlanejada: CategoriaPlanejadaModel, paraMes mes: Date) -> Double
+    func calcularTotalGastoParaSubcategoria(_ subcategoriaPlanejada: SubcategoriaPlanejadaModel, paraMes mes: Date) -> Double
 }

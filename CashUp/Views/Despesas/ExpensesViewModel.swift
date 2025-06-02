@@ -1,226 +1,408 @@
+//
+//  ExpensesViewModel.swift
+//  CashUp
+//
+//  Created by [Seu Nome] on [Data].
+//
+
 import Foundation
+import SwiftData
+import SwiftUI
 
-class ExpensesViewModel: ObservableObject, ExpenseCalculation { // Conforma ao protocolo
+enum RecurringExpenseDeletionScope {
+    case thisOccurrenceOnly
+    case thisAndAllFutureOccurrences
+    case entireSeries
+}
 
-    // MARK: - Published Properties
-
-    @Published var currentMonth: Date = Date() {
+@MainActor
+class ExpensesViewModel: ObservableObject, ExpenseCalculation {
+    
+    var modelContext: ModelContext
+    
+    @Published var currentMonth: Date = Date().startOfMonth() {
         didSet {
-            carregarTodasExpenses()
+            if oldValue.startOfMonth() != currentMonth.startOfMonth() {
+                loadDisplayableExpenses()
+            }
         }
     }
-
-    @Published var allExpenses: [Expense] = [] {
-        didSet {
-            salvarTodasExpenses()
-        }
-    }
-
+    
     @Published var selectedTransactionType: Int = 0 {
         didSet {
-            objectWillChange.send()
+            loadDisplayableExpenses()
+        }
+    }
+    
+    @Published var transacoesExibidas: [DisplayableExpense] = []
+    
+    var availableCategories: [CategoriaModel] {
+        let sortDescriptor = SortDescriptor(\CategoriaModel.nome, order: .forward)
+        let fetchDescriptor = FetchDescriptor<CategoriaModel>(sortBy: [sortDescriptor])
+        do {
+            return try modelContext.fetch(fetchDescriptor)
+        } catch {
+            print("Erro ao buscar CategoriaModel para availableCategories: \(error)")
+            return []
+        }
+    }
+    
+    init(modelContext: ModelContext) {
+        self.modelContext = modelContext
+        loadDisplayableExpenses()
+    }
+    
+    func configure(with newModelContext: ModelContext) {
+        if self.modelContext !== newModelContext {
+            self.modelContext = newModelContext
+            print("ExpensesViewModel: ModelContext reconfigurado via configure().")
+            loadDisplayableExpenses()
+        }
+    }
+    
+    func addExpense(expenseData: ExpenseModel,
+                    categoriaModel: CategoriaModel, 
+                    subcategoriaModel: SubcategoriaModel) {
+        modelContext.insert(expenseData)
+        print("ExpenseModel inserido com ID: \(expenseData.id), Desc: \(expenseData.expenseDescription)")
+        do {
+            try modelContext.save()
+            print("Contexto salvo após adicionar despesa.")
+            loadDisplayableExpenses()
+        } catch {
+            print("Erro ao salvar contexto após adicionar despesa: \(error.localizedDescription)")
         }
     }
 
-    var expensesDoMes: [Expense] {
+    
+    func removeExpense(_ expenseToRemove: DisplayableExpense, scope: RecurringExpenseDeletionScope? = nil) {
         let calendar = Calendar.current
-        let currentMonthComponents = calendar.dateComponents([.year, .month], from: currentMonth)
+        
+        if expenseToRemove.isRecurringInstance,
+           let originalID = expenseToRemove.originalExpenseID,
+           let effectiveScope = scope {
+            
+            let predicate = #Predicate<ExpenseModel> { $0.id == originalID }
+            let fetchDescriptor = FetchDescriptor(predicate: predicate)
+            
+            do {
+                guard let originalExpenseModel = try modelContext.fetch(fetchDescriptor).first else {
+                    print("ExpenseModel original (ID: \(originalID)) não encontrada para modificação/deleção.")
+                    loadDisplayableExpenses()
+                    return
+                }
 
-        return allExpenses.filter { expense in
-            let expenseComponents = calendar.dateComponents([.year, .month], from: expense.date)
-            return expenseComponents.year == currentMonthComponents.year && expenseComponents.month == currentMonthComponents.month
-        }.sorted(by: { $0.date > $1.date })
+                var repetitionDataCopy = originalExpenseModel.repetition
+
+                if repetitionDataCopy == nil && (effectiveScope == .thisOccurrenceOnly || effectiveScope == .thisAndAllFutureOccurrences) {
+                    print("Erro: Tentando modificar dados de repetição que não existem para a ExpenseModel original. ID: \(originalID)")
+                    loadDisplayableExpenses()
+                    return
+                }
+
+                switch effectiveScope {
+                case .thisOccurrenceOnly:
+                    if repetitionDataCopy != nil {
+                        let dateToExclude = calendar.startOfDay(for: expenseToRemove.date)
+                        if repetitionDataCopy!.excludedDates == nil {
+                            repetitionDataCopy!.excludedDates = []
+                        }
+                        if !(repetitionDataCopy!.excludedDates?.contains(where: { calendar.isDate($0, inSameDayAs: dateToExclude) }) ?? false) {
+                            repetitionDataCopy!.excludedDates?.append(dateToExclude)
+                            print("Data \(dateToExclude) adicionada às excludedDates para a recorrência ID: \(originalID)")
+                        }
+                    }
+                    
+                case .thisAndAllFutureOccurrences:
+                    if repetitionDataCopy != nil {
+                        let newEndDate = calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: expenseToRemove.date))
+                        
+                        if let validNewEndDate = newEndDate, validNewEndDate >= calendar.startOfDay(for: originalExpenseModel.date) {
+                            repetitionDataCopy!.endDate = validNewEndDate // Modifica a cópia
+                            print("EndDate da recorrência ID: \(originalID) atualizado para \(validNewEndDate)")
+                        } else {
+                            print("Nova data final inválida ou antes do início para recorrência ID: \(originalID). Deletando a série inteira como fallback.")
+                            modelContext.delete(originalExpenseModel)
+                            repetitionDataCopy = nil
+                        }
+                    }
+                case .entireSeries:
+                    print("Deletando toda a série recorrente original com ID: \(originalID)")
+                    modelContext.delete(originalExpenseModel)
+                    repetitionDataCopy = nil
+                }
+
+                if effectiveScope != .entireSeries && !(effectiveScope == .thisAndAllFutureOccurrences && repetitionDataCopy == nil) {
+                     originalExpenseModel.repetition = repetitionDataCopy
+                }
+                
+                try modelContext.save()
+                print("Modificações/Deleção da recorrência (ID: \(originalID)) salvas.")
+                
+            } catch {
+                print("Erro ao processar remoção/modificação da despesa recorrente (ID: \(originalID)): \(error.localizedDescription)")
+            }
+
+        } else if !expenseToRemove.isRecurringInstance || expenseToRemove.originalExpenseID == nil {
+            let idToDelete = expenseToRemove.id
+            print("Tentando remover ExpenseModel única ou base (ID: \(idToDelete)) diretamente.")
+            let predicate = #Predicate<ExpenseModel> { $0.id == idToDelete }
+            let fetchDescriptor = FetchDescriptor(predicate: predicate)
+            
+            do {
+                if let expenseModelRealParaDeletar = try modelContext.fetch(fetchDescriptor).first {
+                    modelContext.delete(expenseModelRealParaDeletar)
+                    try modelContext.save()
+                    print("ExpenseModel (ID: \(idToDelete)) removida do banco com sucesso.")
+                } else {
+                    print("ExpenseModel (ID: \(idToDelete)) não encontrada no banco para remoção.")
+                }
+            } catch {
+                print("Erro ao remover despesa (ID: \(idToDelete)) do banco: \(error.localizedDescription)")
+            }
+        } else {
+            print("Remoção de instância virtual sem escopo definido ou originalID não resultará em ação no banco (além da UI).")
+        }
+        
+        loadDisplayableExpenses()
     }
-
-    var despesasDoMes: [Expense] {
-        expensesDoMes.filter { !$0.isIncome }
-    }
-
-    var receitasDoMes: [Expense] {
-        expensesDoMes.filter { $0.isIncome }
-    }
-
-    var transacoesExibidas: [Expense] {
-        selectedTransactionType == 0 ? despesasDoMes : receitasDoMes
-    }
-
-    @Published var availableCategories: [Categoria] = CategoriasData.todas
-
-    // MARK: - Private Properties
-
-    private var currentMesAno: String {
-        formatador.string(from: currentMonth)
-    }
-
-    private let formatador: DateFormatter = {
-        let df = DateFormatter()
-        df.dateFormat = "yyyy-MM"
-        return df
-    }()
-
-    // MARK: - Initializer
-
-    init() {
-        let now = Date()
-        self.currentMonth = now // Initialize here
-        carregarTodasExpenses()
-    }
-
-    // MARK: - Public Methods
-
-    func addExpense(_ expense: Expense) {
-        guard let existingCategory = availableCategories.first(where: { $0.id == expense.category.id }) else {
-            print("Erro: Categoria '\(expense.category.nome)' (ID: \(expense.category.id)) não encontrada em availableCategories. Transação não adicionada.")
+    
+    func loadDisplayableExpenses() {
+        let monthToLoad = currentMonth.startOfMonth()
+        let calendar = Calendar.current
+        guard let monthInterval = calendar.dateInterval(of: .month, for: monthToLoad) else {
+            self.transacoesExibidas = []
             return
         }
 
-        guard let existingSubcategory = existingCategory.subcategorias.first(where: { $0.id == expense.subcategory.id }) else {
-            print("Erro: Subcategoria '\(expense.subcategory.nome)' (ID: \(expense.subcategory.id)) não encontrada na categoria '\(existingCategory.nome)'. Transação não adicionada.")
+        var allDisplayableTransactions: [DisplayableExpense] = []
+        let fetchDescriptor = FetchDescriptor<ExpenseModel>(sortBy: [SortDescriptor(\ExpenseModel.date, order: .forward)]) 
+        
+        do {
+            let allPersistedExpenses = try modelContext.fetch(fetchDescriptor)
+            
+            for expense in allPersistedExpenses {
+                if expense.repetition != nil && expense.repetition?.repeatOption != .nunca {
+                    let occurrences = expense.generateOccurrences(forDateInterval: monthInterval, calendar: calendar)
+                    allDisplayableTransactions.append(contentsOf: occurrences)
+                } else {
+                    if monthInterval.contains(expense.date) {
+                        allDisplayableTransactions.append(DisplayableExpense(from: expense))
+                    }
+                }
+            }
+        } catch {
+            print("Falha ao buscar todas as despesas persistidas: \(error)")
+            self.transacoesExibidas = []
             return
         }
+        
+        let finalFilteredTransactions: [DisplayableExpense]
+        if selectedTransactionType == 0 { 
+            finalFilteredTransactions = allDisplayableTransactions.filter { !$0.isIncome }
+        } else { 
+            finalFilteredTransactions = allDisplayableTransactions.filter { $0.isIncome }
+        }
+        
+        self.transacoesExibidas = finalFilteredTransactions.sorted { $0.date > $1.date } 
+    }
+    
+    func allTransactionsForCurrentMonth() -> [DisplayableExpense] {
+        let monthToLoad = currentMonth.startOfMonth()
+        let calendar = Calendar.current
+        guard let monthInterval = calendar.dateInterval(of: .month, for: monthToLoad) else { return [] }
 
-        let newExpense = Expense(
-            id: expense.id,
-            amount: expense.amount,
-            date: expense.date,
-            category: existingCategory,
-            subcategory: existingSubcategory,
-            description: expense.description,
-            isIncome: expense.isIncome,
-            repetition: expense.repetition
+        var allDisplayableTransactions: [DisplayableExpense] = []
+        let fetchDescriptor = FetchDescriptor<ExpenseModel>(sortBy: [SortDescriptor(\ExpenseModel.date, order: .forward)])
+        
+        do {
+            let allPersistedExpenses = try modelContext.fetch(fetchDescriptor)
+            for expense in allPersistedExpenses {
+                if expense.repetition != nil && expense.repetition?.repeatOption != .nunca {
+                    let occurrences = expense.generateOccurrences(forDateInterval: monthInterval, calendar: calendar)
+                    allDisplayableTransactions.append(contentsOf: occurrences)
+                } else {
+                    if monthInterval.contains(expense.date) {
+                        allDisplayableTransactions.append(DisplayableExpense(from: expense))
+                    }
+                }
+            }
+        } catch {
+            print("Falha ao buscar todas as despesas persistidas para allTransactionsForCurrentMonth: \(error)")
+            return []
+        }
+        return allDisplayableTransactions
+    }
+
+    func fetchTransactions(forSpecificDate date: Date, isIncome: Bool?) -> [DisplayableExpense] {
+        let calendar = Calendar.current
+        
+        guard let _ = calendar.dateInterval(of: .day, for: date),
+              let monthContainingDay = calendar.dateInterval(of: .month, for: date) else {
+            print("Erro ao criar intervalos de data para fetchTransactions(forSpecificDate:)")
+            return []
+        }
+
+        var displayableTransactionsForDay: [DisplayableExpense] = []
+
+        let fetchAllDescriptor = FetchDescriptor<ExpenseModel>(sortBy: [SortDescriptor(\ExpenseModel.date, order: .forward)])
+        
+        do {
+            let allPersistedExpenses = try modelContext.fetch(fetchAllDescriptor)
+            
+            for expense in allPersistedExpenses {
+                if expense.repetition != nil && expense.repetition?.repeatOption != .nunca {
+                    let occurrencesInMonth = expense.generateOccurrences(forDateInterval: monthContainingDay, calendar: calendar)
+                    for occurrence in occurrencesInMonth {
+                        if calendar.isDate(occurrence.date, inSameDayAs: date) {
+                            displayableTransactionsForDay.append(occurrence)
+                        }
+                    }
+                } else {
+                    if calendar.isDate(expense.date, inSameDayAs: date) {
+                        displayableTransactionsForDay.append(DisplayableExpense(from: expense))
+                    }
+                }
+            }
+        } catch {
+            print("Falha ao buscar todas as despesas persistidas em fetchTransactions(forSpecificDate:): \(error)")
+            return []
+        }
+        
+        if let incomeStatus = isIncome {
+            return displayableTransactionsForDay.filter { $0.isIncome == incomeStatus }
+        }
+        
+        return displayableTransactionsForDay
+    }
+
+    func expensesOnlyForCurrentMonth() -> [DisplayableExpense] {
+        return allTransactionsForCurrentMonth().filter { !$0.isIncome }
+    }
+    
+    func incomesOnlyForCurrentMonth() -> [DisplayableExpense] {
+        return allTransactionsForCurrentMonth().filter { $0.isIncome }
+    }
+    
+    func totalIncomeForCurrentMonth() -> Double {
+        incomesOnlyForCurrentMonth().reduce(0) { $0 + $1.amount }
+    }
+    
+    func totalExpenseForCurrentMonth() -> Double {
+        expensesOnlyForCurrentMonth().reduce(0) { $0 + $1.amount }
+    }
+    
+    func calcularTotalGastoEmCategoriasPlanejadas(
+        paraMes mes: Date,
+        categoriasPlanejadas: [CategoriaPlanejadaModel]
+    ) -> Double {
+        let despesasDoMes = self.expensesOnlyForCurrentMonth()
+        
+        let subcategoriaIDsPlanejadas: Set<UUID> = Set(
+            categoriasPlanejadas
+                .flatMap { $0.subcategoriasPlanejadas ?? [] }
+                .compactMap { $0.subcategoriaOriginal?.id }
         )
-
-        allExpenses.append(newExpense)
+        
+        if subcategoriaIDsPlanejadas.isEmpty { return 0.0 }
+        
+        return despesasDoMes
+            .filter { displayableExpense in
+                guard let subId = displayableExpense.subcategoria?.id else { return false }
+                return subcategoriaIDsPlanejadas.contains(subId)
+            }
+            .reduce(0.0) { $0 + $1.amount }
     }
 
-    func removeExpense(_ expense: Expense) {
-        allExpenses.removeAll { $0.id == expense.id }
+    
+    func calcularTotalGastoParaCategoria(_ categoriaPlanejada: CategoriaPlanejadaModel, paraMes mes: Date) -> Double {
+        guard let catOriginalID = categoriaPlanejada.categoriaOriginal?.id else { return 0.0 }
+        let despesasDoMes = self.expensesOnlyForCurrentMonth()
+        
+        return despesasDoMes
+            .filter { $0.categoria?.id == catOriginalID }
+            .reduce(0.0) { $0 + $1.amount }
     }
-
-    func totalIncome() -> Double {
-        expensesDoMes
-            .filter { $0.isIncome }
-            .map { $0.amount }
-            .reduce(0, +)
+    
+    func calcularTotalGastoParaSubcategoria(_ subcategoriaPlanejada: SubcategoriaPlanejadaModel, paraMes mes: Date) -> Double {
+        guard let subOriginalID = subcategoriaPlanejada.subcategoriaOriginal?.id else { return 0.0 }
+        let despesasDoMes = self.expensesOnlyForCurrentMonth()
+        
+        return despesasDoMes
+            .filter { $0.subcategoria?.id == subOriginalID }
+            .reduce(0.0) { $0 + $1.amount }
     }
-
-    func totalExpense() -> Double {
-        expensesDoMes
-            .filter { !$0.isIncome }
-            .map { $0.amount }
-            .reduce(0, +)
+    
+    func findCategoriaModel(by id: UUID) -> CategoriaModel? {
+        let predicate = #Predicate<CategoriaModel> { $0.id == id }
+        let fetchDescriptor = FetchDescriptor(predicate: predicate)
+        do {
+            return try modelContext.fetch(fetchDescriptor).first
+        } catch {
+            print("Erro ao buscar CategoriaModel por ID \(id): \(error)")
+            return nil
+        }
     }
-
+    
+    func findSubcategoriaModel(by id: UUID) -> SubcategoriaModel? {
+        let predicate = #Predicate<SubcategoriaModel> { $0.id == id }
+        let fetchDescriptor = FetchDescriptor(predicate: predicate)
+        do {
+            return try modelContext.fetch(fetchDescriptor).first
+        } catch {
+            print("Erro ao buscar SubcategoriaModel por ID \(id): \(error)")
+            return nil
+        }
+    }
+    
     func navigateMonth(isNext: Bool) {
         let calendar = Calendar.current
         if let newDate = calendar.date(byAdding: .month, value: isNext ? 1 : -1, to: currentMonth) {
-            currentMonth = newDate
+            currentMonth = newDate.startOfMonth()
         }
     }
+}
 
-    // MARK: - Expense Calculation Functions (Conformando ao protocolo ExpenseCalculation)
-
-    public func calcularTotalGastoEmCategoriasPlanejadas(paraMes mes: Date, categoriasPlanejadas: [CategoriaPlanejada]) -> Double {
-        var totalGasto = 0.0
-        let expensesDoMes = allExpenses.filter { expense in
-            Calendar.current.isDate(expense.date, equalTo: mes, toGranularity: .month) && !expense.isIncome
-        }
-        print("--- DEBUG: calcularTotalGastoEmCategoriasPlanejadas ---")
-        print("Mês de referência: \(mes.isoString())")
-        print("Total de despesas do mês: \(expensesDoMes.count)")
-        print("Categorias planejadas para o mês: \(categoriasPlanejadas.count)")
-
-        for categoriaPlanejada in categoriasPlanejadas {
-            print("  Analisando Categoria Planejada: \(categoriaPlanejada.categoria.nome) (ID: \(categoriaPlanejada.categoria.id))")
-            for subcategoriaPlanejada in categoriaPlanejada.subcategoriasPlanejadas {
-                let gastoNestaSubcategoria = expensesDoMes
-                    .filter { $0.subcategory.id == subcategoriaPlanejada.subcategoria.id }
-                    .map { $0.amount }
-                    .reduce(0, +)
-                totalGasto += gastoNestaSubcategoria
-                print("    Subcategoria Planejada: \(subcategoriaPlanejada.subcategoria.nome) (ID: \(subcategoriaPlanejada.subcategoria.id)) - Gasto Detectado: \(gastoNestaSubcategoria)")
-            }
-        }
-        print("Total Gasto Calculado em Categorias Planejadas: \(totalGasto)")
-        print("--------------------------------------------------")
-        return totalGasto
+struct DisplayableExpense: Identifiable, Hashable {
+    let id: UUID
+    let originalExpenseID: UUID?
+    var amount: Double
+    var date: Date
+    var expenseDescription: String
+    var isIncome: Bool
+    var categoria: CategoriaModel?
+    var subcategoria: SubcategoriaModel?
+    var isRecurringInstance: Bool
+    
+    init(from expense: ExpenseModel) {
+        self.id = expense.id
+        self.originalExpenseID = nil
+        self.amount = expense.amount
+        self.date = expense.date
+        self.expenseDescription = expense.expenseDescription
+        self.isIncome = expense.isIncome
+        self.categoria = expense.categoria
+        self.subcategoria = expense.subcategoria
+        self.isRecurringInstance = expense.repetition != nil
+    }
+    
+    init(from recurringExpense: ExpenseModel, occurrenceDate: Date) {
+        self.id = UUID()
+        self.originalExpenseID = recurringExpense.id
+        self.amount = recurringExpense.amount
+        self.date = occurrenceDate
+        self.expenseDescription = recurringExpense.expenseDescription
+        self.isIncome = recurringExpense.isIncome
+        self.categoria = recurringExpense.categoria
+        self.subcategoria = recurringExpense.subcategoria
+        self.isRecurringInstance = true
     }
 
-    public func calcularTotalGastoParaCategoria(_ categoriaPlanejada: CategoriaPlanejada, paraMes mes: Date) -> Double {
-        var totalGasto = 0.0
-        let expensesDoMes = allExpenses.filter { expense in
-            Calendar.current.isDate(expense.date, equalTo: mes, toGranularity: .month) && !expense.isIncome
-        }
-
-        for subcategoriaPlanejada in categoriaPlanejada.subcategoriasPlanejadas {
-            totalGasto += expensesDoMes
-                .filter { $0.subcategory.id == subcategoriaPlanejada.subcategoria.id }
-                .map { $0.amount }
-                .reduce(0, +)
-        }
-        return totalGasto
+    static func == (lhs: DisplayableExpense, rhs: DisplayableExpense) -> Bool {
+        lhs.id == rhs.id
     }
-
-    public func calcularTotalGastoParaSubcategoria(_ subcategoriaPlanejada: SubcategoriaPlanejada, paraMes mes: Date) -> Double {
-        let expensesDoMes = allExpenses.filter { expense in
-            Calendar.current.isDate(expense.date, equalTo: mes, toGranularity: .month) && !expense.isIncome
-        }
-        let gasto = expensesDoMes
-            .filter { $0.subcategory.id == subcategoriaPlanejada.subcategoria.id }
-            .map { $0.amount }
-            .reduce(0, +)
-
-        print("DEBUG: Gasto para \(subcategoriaPlanejada.subcategoria.nome) (ID: \(subcategoriaPlanejada.subcategoria.id)): \(gasto)")
-
-        return gasto
-    }
-
-    // MARK: - Persistence (NOW FOR ALL EXPENSES)
-
-    private let allExpensesKey = "allUserExpenses"
-
-    private func salvarTodasExpenses() {
-        if let data = try? JSONEncoder().encode(allExpenses) {
-            UserDefaults.standard.set(data, forKey: allExpensesKey)
-            print("Todas as despesas salvas. Total: \(allExpenses.count)")
-        } else {
-            print("Erro ao codificar e salvar todas as despesas.")
-        }
-    }
-
-    private func carregarTodasExpenses() {
-        if let data = UserDefaults.standard.data(forKey: allExpensesKey),
-           let decodedExpenses = try? JSONDecoder().decode([Expense].self, from: data) {
-
-            self.allExpenses = decodedExpenses.compactMap { loadedExpense in
-                guard let categoryToUse = availableCategories.first(where: { $0.id == loadedExpense.category.id }) else {
-                    print("Aviso: Categoria '\(loadedExpense.category.nome)' (ID: \(loadedExpense.category.id)) de despesa carregada não encontrada. Despesa ignorada.")
-                    return nil
-                }
-                guard let subcategoryToUse = categoryToUse.subcategorias.first(where: { $0.id == loadedExpense.subcategory.id }) else {
-                    print("Aviso: Subcategoria '\(loadedExpense.subcategory.nome)' (ID: \(loadedExpense.subcategory.id)) de despesa carregada não encontrada na categoria '\(categoryToUse.nome)'. Despesa ignorada.")
-                    return nil
-                }
-                print("--- Despesa Carregada ---")
-                print("Despesa ID: \(loadedExpense.id)")
-                print("Subcategoria da despesa (Carregada): \(loadedExpense.subcategory.nome) - ID: \(loadedExpense.subcategory.id)")
-                print("Subcategoria da despesa (Usada): \(subcategoryToUse.nome) - ID: \(subcategoryToUse.id)")
-                print("-------------------------")
-                return Expense(
-                    id: loadedExpense.id,
-                    amount: loadedExpense.amount,
-                    date: loadedExpense.date,
-                    category: categoryToUse,
-                    subcategory: subcategoryToUse,
-                    description: loadedExpense.description,
-                    isIncome: loadedExpense.isIncome,
-                    repetition: loadedExpense.repetition
-                )
-            }
-            print("Todas as despesas carregadas. Total: \(self.allExpenses.count)")
-        } else {
-            self.allExpenses = []
-            print("Nenhuma despesa para carregar ou erro na decodificação.")
-        }
+    
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
     }
 }

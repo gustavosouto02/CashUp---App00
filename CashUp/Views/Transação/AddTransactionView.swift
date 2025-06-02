@@ -2,162 +2,139 @@
 //  AddTransactionView.swift
 //  CashUp
 //
-//  Created by Gustavo Souto Pereira on 13/05/25.
+//  Created by Gustavo Souto Pereira on 27/05/25.
 //
 
 import SwiftUI
+import SwiftData
 
 struct AddTransactionView: View {
     @Environment(\.sizeCategory) var sizeCategory
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var viewModel = AddTransactionViewModel() // Nosso ViewModel local
+    @Environment(\.modelContext) private var modelContext
+
+    @StateObject private var addTransactionVM = AddTransactionViewModel()
     
-    @Binding var selectedSubcategory: Subcategoria?
-    @Binding var selectedCategory: Categoria?
+    @State private var selectedSubcategoryModel: SubcategoriaModel? = nil
+    @State private var selectedCategoryModel: CategoriaModel? = nil
     
-    // Isso é como a view espera receber o ExpensesViewModel: do ambiente
     @EnvironmentObject var expensesViewModel: ExpensesViewModel
     
     @State private var isCategoryModalPresented = false
     @State private var showSuccessAlert = false
-    
+    @State private var showErrorAlert = false
+    @State private var errorMessage = ""
+
     var body: some View {
         NavigationStack {
             ZStack {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
-                        // Seletor de Tipo de Transação
-                        TransactionPicker(selectedTransactionType: $viewModel.selectedTransactionType)
-                        
-                        CurrencyAmountField(amount: $viewModel.amount)
-                            .frame(maxWidth: .infinity, alignment: .center)
-                        
+                    VStack(alignment: .center, spacing: 16) {
+                        TransactionPicker(selectedTransactionType: $addTransactionVM.selectedTransactionType)
+                            .padding(.horizontal)
+
+                        CurrencyAmountField(amount: $addTransactionVM.amount)
+
                         transactionDetailsSection
+                            .padding(.horizontal)
                     }
-                    .padding()
-                    .background(Color.gray.opacity(0.2))
-                    .cornerRadius(12)
-                    .padding(.top, 16)
+                    .padding(.vertical)
                 }
             }
             .hideKeyboardOnTap()
-            .navigationTitle("Registrar Gasto")
+            .navigationTitle(addTransactionVM.selectedTransactionType == 0 ? "Registrar Despesa" : "Registrar Receita")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: {
-                        selectedSubcategory = nil // Limpa os bindings externos também
-                        selectedCategory = nil
-                        viewModel.resetFields() // Limpa o estado interno do ViewModel
-                        
+                    Button("Cancelar") {
+                        selectedSubcategoryModel = nil
+                        selectedCategoryModel = nil
+                        addTransactionVM.resetFields()
                         dismiss()
-                    }) {
-                        Text("Cancelar")
-                            .foregroundStyle(.red)
                     }
+                    .foregroundStyle(.red)
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Adicionar") {
-                        let sucesso = viewModel.criarTransacao(
-                            categoria: selectedCategory,
-                            subcategoria: selectedSubcategory
-                            // expensesViewModel NÃO é mais passado aqui
+
+                        let sucesso = addTransactionVM.criarTransacaoEChamarClosure(
+                            categoriaModelApp: selectedCategoryModel,
+                            subcategoriaModelApp: selectedSubcategoryModel, modelContext: modelContext
                         )
 
                         if sucesso {
                             showSuccessAlert = true
-                            // Limpa os bindings externos após o sucesso
-                            selectedCategory = nil
-                            selectedSubcategory = nil
+                            selectedCategoryModel = nil
+                            selectedSubcategoryModel = nil
+                        } else {
+                            errorMessage = "Por favor, preencha o valor e selecione uma categoria."
+                            showErrorAlert = true
                         }
                     }
-                    .disabled(viewModel.amount <= 0 || selectedCategory == nil || selectedSubcategory == nil)
+                    .disabled(addTransactionVM.amount <= 0 || selectedCategoryModel == nil || selectedSubcategoryModel == nil)
                 }
             }
             .sheet(isPresented: $isCategoryModalPresented) {
+                let categoriesVM = CategoriesViewModel(
+                    modelContext: self.modelContext,
+                    transactionType: addTransactionVM.selectedTransactionType == 0 ? .despesa : .receita // Passa o tipo
+                )
                 CategorySelectionSheet(
-                    selectedSubcategory: $selectedSubcategory,
+                    viewModel: categoriesVM,
+                    selectedSubcategoryModel: $selectedSubcategoryModel,
                     isPresented: $isCategoryModalPresented,
-                    selectedCategory: $selectedCategory
+                    selectedCategoryModel: $selectedCategoryModel
                 )
             }
-            .alert("Gasto registrada", isPresented: $showSuccessAlert) {
-                Button("OK") {
-                    dismiss()
-                }
+            .alert("Transação Registrada!", isPresented: $showSuccessAlert) {
+                Button("OK") { dismiss() }
             }
-            // MARK: - Setup do closure do ViewModel
-            // Este é o ponto onde a conexão entre AddTransactionViewModel e ExpensesViewModel é feita.
+            .alert("Erro", isPresented: $showErrorAlert) {
+                Button("OK") {}
+            } message: {
+                Text(errorMessage)
+            }
             .onAppear {
-                viewModel.onTransactionCreated = { newExpense, category, subcategory in
-                    // Aqui você passa a transação para o ExpensesViewModel.
-                    // Adicionei 'category' e 'subcategory' como parâmetros extras no closure
-                    // para que o ExpensesViewModel possa fazer a validação com as instâncias gerenciadas.
-                    expensesViewModel.addExpense(newExpense)
+
+                addTransactionVM.onTransactionCreated = { expenseModelCriado, categoriaModelSelecionada, subcategoriaModelSelecionada in
+
+                    expensesViewModel.addExpense(
+                        expenseData: expenseModelCriado,
+                        categoriaModel: categoriaModelSelecionada,
+                        subcategoriaModel: subcategoriaModelSelecionada
+                    )
                 }
             }
         }
     }
     
-    // 🔧 Seção de detalhes da transação
     private var transactionDetailsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 20) {
             CategoryPicker(
-                selectedSubcategory: $selectedSubcategory,
-                selectedCategory: $selectedCategory,
+                selectedSubcategoryModel: $selectedSubcategoryModel,
+                selectedCategoryModel: $selectedCategoryModel,
                 isCategorySheetPresented: $isCategoryModalPresented
             )
             
-            DescriptionField(description: $viewModel.description) // Agora opcional
+            DescriptionField(expenseDescription: $addTransactionVM.expenseDescription)
+
             
             DatePickerField(
-                selectedDate: $viewModel.selectedDate,
-                formattedDate: viewModel.formatDate(viewModel.selectedDate)
+                selectedDate: $addTransactionVM.selectedDate,
+                formattedDate: addTransactionVM.formatDate(addTransactionVM.selectedDate)
             )
             
             RepeatOptionPicker(
-                repeatOption: $viewModel.repeatOption,
-                isRepeatDialogPresented: $viewModel.isRepeatDialogPresented,
-                repeatEndDate: $viewModel.repeatEndDate,
-                selectedDate: viewModel.selectedDate
+                repeatOption: $addTransactionVM.repeatOption,
+                isRepeatDialogPresented: $addTransactionVM.isRepeatDialogPresented,
+                repeatEndDate: $addTransactionVM.repeatEndDate,
+                selectedDate: addTransactionVM.selectedDate
             )
         }
         .padding()
-        .background(Color.gray.opacity(0.2))
+        .background(Color(.secondarySystemBackground))
         .cornerRadius(12)
-        .frame(minHeight: 120)
     }
 }
 
-
-// MARK: - Preview
-#Preview {
-    PreviewWrapper()
-        .environment(\.sizeCategory, .medium)
-}
-
-struct PreviewWrapper: View {
-    @State private var selectedSubcategory: Subcategoria? = nil
-    @State private var selectedCategory: Categoria? = nil
-    
-    // Crie a instância do ViewModel que será fornecida ao ambiente
-    @StateObject private var expensesViewModelForPreview = ExpensesViewModel()
-    
-    var body: some View {
-        // Agora, use o modificador .environmentObject para injetar o ViewModel
-        AddTransactionView(
-            selectedSubcategory: $selectedSubcategory,
-            selectedCategory: $selectedCategory
-        )
-        .environmentObject(expensesViewModelForPreview) // <--- FORMA CORRETA DE INJETAR
-    }
-}
-
-// MARK: - Utility
-extension View {
-    func hideKeyboardOnTap() -> some View {
-        self.onTapGesture {
-            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-        }
-    }
-}

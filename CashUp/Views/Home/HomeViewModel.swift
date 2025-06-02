@@ -2,136 +2,218 @@
 //  HomeViewModel.swift
 //  CashUp
 //
-//  Created by Gustavo Souto Pereira on 09/05/25.
-//  Dados da visão geral
+//  Created by Gustavo Souto Pereira on 19/05/25.
+//
+
+
 
 import Combine
 import Foundation
-// REMOVA 'import SwiftUI' daqui, a menos que você esteja usando Color diretamente
-// ou outras structs de UI do SwiftUI DENTRO DESTE ViewModel.
-// Se você só usa @Published e ObservableObject, Combine e Foundation são suficientes.
+import SwiftData
+import SwiftUI
 
+@MainActor
 class HomeViewModel: ObservableObject {
-    // Declaramos como @Published aqui para que HomeView possa observar
-    // e o didSet do currentMonth do HomeViewModel seja o gatilho principal.
-    @Published var planningViewModel: PlanningViewModel
-    @Published var expensesViewModel: ExpensesViewModel
+    let modelContext: ModelContext
+    let planningViewModel: PlanningViewModel
+    let expensesViewModel: ExpensesViewModel
 
     @Published var currentMonth: Date {
         didSet {
-            // Sincroniza os ViewModels filhos APENAS se o mês mudou no HomeViewModel
-            // Se eles já estão sincronizados via 'assign', esta parte pode ser redundante
-            // e até causar loops. O 'assign' no setupBindings é mais robusto.
-            if oldValue.startOfMonth() != currentMonth.startOfMonth() {
-                planningViewModel.currentMonth = currentMonth.startOfMonth()
-                expensesViewModel.currentMonth = currentMonth.startOfMonth()
+            let oldStart = oldValue.startOfMonth()
+            let newStart = currentMonth.startOfMonth()
+            if oldStart != newStart {
+                if planningViewModel.currentMonth.startOfMonth() != newStart {
+                    planningViewModel.currentMonth = newStart
+                }
+                if expensesViewModel.currentMonth.startOfMonth() != newStart {
+                    expensesViewModel.currentMonth = newStart
+                }
+                updateCardData()
             }
-            updatePlanningCardData() // Recalculate when month changes
         }
     }
 
-    @Published var miniChart: [Double] = [] // Placeholder for mini chart data
-    @Published var totalSpentMonth: Double = 0 // Placeholder for total spent this month
+    @Published var totalSpentMonth: Double = 0.0
+    @Published var totalIncomeMonth: Double = 0.0
+    @Published var totalPlanejadoMes: Double = 0.0
+    @Published var totalRestantePlanejadoMes: Double = 0.0
+    @Published var categoriasResumo: [CategoriaResumo] = []
+    @Published var categoriasPlanejadas: [CategoriaPlanejadaModel] = []
+    @Published var dailyExpenseChartData: [DailyExpenseItem] = []
 
-    // Properties for the Planning Card
-    @Published var totalGastoEmPlanejado: Double = 0.0
-    @Published var totalPlanejado: Double = 0.0
-    @Published var restanteDoPlanejamento: Double = 0.0
-    @Published var metaResidualProgress: Double = 0.0
+    private var cancellables = Set<AnyCancellable>()
 
-    private var cancellables: Set<AnyCancellable> = []
-
-    init(planningViewModel: PlanningViewModel, expensesViewModel: ExpensesViewModel) {
+    init(modelContext: ModelContext,
+         planningViewModel: PlanningViewModel,
+         expensesViewModel: ExpensesViewModel) {
+        self.modelContext = modelContext
         self.planningViewModel = planningViewModel
         self.expensesViewModel = expensesViewModel
-        // Inicializa currentMonth com o início do mês atual para consistência
-        self.currentMonth = Date().startOfMonth()
 
-        // Sincroniza os ViewModels filhos com o currentMonth inicial
-        self.planningViewModel.currentMonth = self.currentMonth
-        self.expensesViewModel.currentMonth = self.currentMonth
+        let initialMonth = Date().startOfMonth()
+        _currentMonth = Published(initialValue: initialMonth)
 
-        setupBindings() // Set up Combine publishers
-        updatePlanningCardData() // Initial data load
+        if planningViewModel.currentMonth.startOfMonth() != initialMonth {
+            planningViewModel.currentMonth = initialMonth
+        }
+        if expensesViewModel.currentMonth.startOfMonth() != initialMonth {
+            expensesViewModel.currentMonth = initialMonth
+        }
+
+        setupBindings()
+        updateCardData()
     }
 
     private func setupBindings() {
-        // Observa mudanças nas categorias planejadas e em todas as despesas
-        // Quando qualquer um desses muda, recalcula os dados do cartão de planejamento.
-        Publishers.CombineLatest(
-            planningViewModel.$categoriasPlanejadas, // Reage quando as categorias planejadas mudam
-            expensesViewModel.$allExpenses // Reage quando as despesas mudam
-        )
-        .debounce(for: .milliseconds(100), scheduler: RunLoop.main) // Adiciona um debounce para evitar updates excessivos
-        .sink { [weak self] (_, _) in
-            guard let self = self else { return }
-            self.updatePlanningCardData()
-        }
-        .store(in: &cancellables)
-
-        // Também precisamos observar se o currentMonth dos ViewModels filhos muda,
-        // o que pode acontecer por navegação externa (como na PlanningView).
-        // Assim, o HomeViewModel pode reagir e sincronizar seu próprio currentMonth
-        // e depois recalcular.
-
         planningViewModel.$currentMonth
-            .sink { [weak self] newMonth in
+            .removeDuplicates()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] newPlanningMonth in
                 guard let self = self else { return }
-                // Só atualiza se for um mês diferente para evitar loops
-                if self.currentMonth.startOfMonth() != newMonth.startOfMonth() {
-                    self.currentMonth = newMonth.startOfMonth()
+                let newStart = newPlanningMonth.startOfMonth()
+                if self.currentMonth.startOfMonth() != newStart {
+                    self.currentMonth = newStart
                 }
             }
             .store(in: &cancellables)
 
         expensesViewModel.$currentMonth
-            .sink { [weak self] newMonth in
+            .removeDuplicates()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] newExpensesMonth in
                 guard let self = self else { return }
-                // Só atualiza se for um mês diferente para evitar loops
-                if self.currentMonth.startOfMonth() != newMonth.startOfMonth() {
-                    self.currentMonth = newMonth.startOfMonth()
+                let newStart = newExpensesMonth.startOfMonth()
+                if self.currentMonth.startOfMonth() != newStart {
+                    self.currentMonth = newStart
                 }
             }
             .store(in: &cancellables)
+
+        planningViewModel.objectWillChange
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.updateCardData() }
+            .store(in: &cancellables)
+
+        expensesViewModel.objectWillChange
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.updateCardData() }
+            .store(in: &cancellables)
     }
 
-    // Função principal para carregar dados para a HomeView
-    // Esta função será chamada quando a HomeView aparecer ou precisar de uma atualização
-    func loadHomeData(for month: Date) {
-        // Define o mês atual do HomeViewModel.
-        // O didSet do currentMonth irá disparar a sincronização dos VMS filhos
-        // e updatePlanningCardData().
-        self.currentMonth = month.startOfMonth()
-        // Adicione aqui qualquer outra lógica de carregamento de dados específica da HomeView
-        // que não seja diretamente relacionada ao planejamento/despesas, ex: para miniChart
-    }
-
-    private func updatePlanningCardData() {
-        // Assegura que o mês usado para os cálculos é o mês atual do HomeViewModel
-        let monthToCalculate = currentMonth.startOfMonth()
-
-        let categoriasPlanejadasMesAtual = planningViewModel.getCategoriasPlanejadasForCurrentMonth() // Já filtra pelo currentMonth interno do PlanningViewModel
-
-        // As funções de cálculo do ExpensesViewModel já esperam um 'Date' e retornam 'Double'.
-        // Se houver problemas de inferência de tipo aqui, é por causa de alguma importação.
-        let gastoEmPlanejado: Double = expensesViewModel.calcularTotalGastoEmCategoriasPlanejadas(
-            paraMes: monthToCalculate, // Passa o mês correto para ExpensesViewModel
-            categoriasPlanejadas: categoriasPlanejadasMesAtual
+    var totalGastoEmCategoriasPlanejadas: Double {
+        expensesViewModel.calcularTotalGastoEmCategoriasPlanejadas(
+            paraMes: currentMonth,
+            categoriasPlanejadas: self.categoriasPlanejadas
         )
-
-        let planejado: Double = planningViewModel.valorTotalPlanejado(categorias: categoriasPlanejadasMesAtual)
-
-        self.totalGastoEmPlanejado = gastoEmPlanejado
-        self.totalPlanejado = planejado
-        self.restanteDoPlanejamento = planejado - gastoEmPlanejado
-        self.metaResidualProgress = planejado > 0 ? min(gastoEmPlanejado / planejado, 1.0) : 0.0
     }
 
-    // Helper for currency formatting, useful in the HomeView
+    func updateCardData() {
+        let despesasDoMesDisplayable = expensesViewModel.expensesOnlyForCurrentMonth()
+        let receitasDoMesDisplayable = expensesViewModel.incomesOnlyForCurrentMonth()
+
+        totalSpentMonth = despesasDoMesDisplayable.reduce(0) { $0 + $1.amount }
+        totalIncomeMonth = receitasDoMesDisplayable.reduce(0) { $0 + $1.amount }
+
+        totalPlanejadoMes = planningViewModel.valorTotalPlanejadoParaMesAtual()
+        let fetchedCategoriasPlanejadas = planningViewModel.getCategoriasPlanejadasForCurrentMonth()
+        self.categoriasPlanejadas = fetchedCategoriasPlanejadas
+
+        let gastoCalculadoEmPlanejadas = expensesViewModel.calcularTotalGastoEmCategoriasPlanejadas(
+            paraMes: currentMonth,
+            categoriasPlanejadas: self.categoriasPlanejadas
+        )
+        totalRestantePlanejadoMes = totalPlanejadoMes - gastoCalculadoEmPlanejadas
+
+        let gastosPorCategoriaDisplayable = Dictionary(grouping: despesasDoMesDisplayable, by: { $0.categoria })
+
+        let valoresPlanejados: [UUID: Double] = self.categoriasPlanejadas.reduce(into: [:]) { acc, plano in
+            if let id = plano.categoriaOriginal?.id {
+                acc[id] = plano.valorTotalPlanejado
+            }
+        }
+
+        categoriasResumo = gastosPorCategoriaDisplayable.compactMap { (categoriaOpt, transacoesDisplayable) in
+            guard let categoria = categoriaOpt else { return nil }
+            let totalCategoria = transacoesDisplayable.reduce(0) { $0 + $1.amount }
+            let percentual = totalSpentMonth > 0 ? totalCategoria / totalSpentMonth : 0
+            let valorPlanejadoParaCategoria = valoresPlanejados[categoria.id]
+            let progresso: Double?
+            if let vp = valorPlanejadoParaCategoria, vp > 0 {
+                progresso = min(totalCategoria / vp, 1.0)
+            } else {
+                progresso = nil
+            }
+
+            return CategoriaResumo(
+                categoria: categoria,
+                total: totalCategoria,
+                percentual: percentual,
+                progressoPlanejado: progresso
+            )
+        }
+        .sorted { $0.total > $1.total }
+
+        updateDailyExpenseChartData(for: currentMonth, allDisplayableExpensesInMonth: despesasDoMesDisplayable)
+    }
+
+    private func updateDailyExpenseChartData(for month: Date, allDisplayableExpensesInMonth: [DisplayableExpense]) {
+        var dailyData: [DailyExpenseItem] = []
+        let calendar = Calendar.current
+        
+        let startOfMonth = month.startOfMonth()
+        
+        guard let monthInterval = calendar.dateInterval(of: .month, for: startOfMonth),
+              let daysInMonth = calendar.range(of: .day, in: .month, for: startOfMonth)?.count else {
+            self.dailyExpenseChartData = []
+            return
+        }
+        
+        let firstDayOfMonthDate = monthInterval.start
+
+        for dayOffset in 0..<daysInMonth {
+            guard let currentDateForDay = calendar.date(byAdding: .day, value: dayOffset, to: firstDayOfMonthDate) else { continue }
+            
+            let expensesForSpecificDay = allDisplayableExpensesInMonth.filter { displayableExpense in
+                calendar.isDate(displayableExpense.date, inSameDayAs: currentDateForDay)
+            }
+            let totalForSpecificDay = expensesForSpecificDay.reduce(0) { $0 + $1.amount }
+            
+            dailyData.append(DailyExpenseItem(date: currentDateForDay,
+                                              totalExpenses: totalForSpecificDay,
+                                              isToday: calendar.isDateInToday(currentDateForDay)))
+        }
+        self.dailyExpenseChartData = dailyData
+    }
+
+    func loadHomeData(for month: Date) {
+        let newMonth = month.startOfMonth()
+        if currentMonth.startOfMonth() != newMonth {
+            currentMonth = newMonth
+        } else {
+            updateCardData()
+        }
+    }
+
     func formatCurrency(_ value: Double) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
         formatter.locale = Locale(identifier: "pt_BR")
-        return formatter.string(from: NSNumber(value: value)) ?? "R$ 0,00"
+        return formatter.string(from: NSNumber(value: value)) ?? "R$0,00"
     }
+}
+
+struct CategoriaResumo: Identifiable {
+    var id: UUID { categoria.id }
+    let categoria: CategoriaModel
+    let total: Double
+    let percentual: Double
+    let progressoPlanejado: Double?
+}
+
+struct DailyExpenseItem: Identifiable {
+    let id = UUID()
+    var date: Date
+    var totalExpenses: Double
+    var isToday: Bool = false
 }

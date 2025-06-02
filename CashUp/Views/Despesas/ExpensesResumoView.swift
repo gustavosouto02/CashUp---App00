@@ -15,14 +15,17 @@ struct ExpensesResumoView: View {
     }
     
     private var saldoColor: Color {
-        income >= expense ? .green : .red
+        if balance == 0 {
+            return .primary
+        }
+        return balance > 0 ? .green : .red
     }
     
     var body: some View {
         HStack{
-            resumoItem(value: income, label: "Renda", color: .primary)
+            resumoItem(value: income, label: "Renda", color: .green)
             Spacer()
-            resumoItem(value: expense, label: "Despesa", color: .primary)
+            resumoItem(value: expense, label: "Despesa", color: .red)
             Spacer()
             resumoItem(value: balance, label: "Saldo", color: saldoColor)
         }
@@ -33,15 +36,17 @@ struct ExpensesResumoView: View {
     
     private func resumoItem(value: Double, label: String, color: Color) -> some View {
         VStack(alignment: .center, spacing: 4) {
-            Text("R$ \(value, specifier: "%.2f")")
+            Text(formatCurrency(value))
                 .font(.title3)
                 .bold()
                 .foregroundStyle(color)
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+                .frame(maxWidth: .infinity)
             Text(label)
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
-        .frame(maxWidth: .infinity) // Distribui igualmente e centraliza
+        .frame(maxWidth: .infinity)
     }
 }
-

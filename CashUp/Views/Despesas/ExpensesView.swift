@@ -2,70 +2,76 @@
 //  ExpensesView.swift
 //  CashUp
 //
-//  Created by Gustavo Souto Pereira on 08/05/25.
+//  Created by [Seu Nome] on [Data].
 //
 
 import SwiftUI
+import SwiftData
 
 struct ExpensesView: View {
     @EnvironmentObject var viewModel: ExpensesViewModel
-    @State private var selectedTransactionType: Int = 0
+    @State private var isAddTransactionPresented = false
 
     var body: some View {
+
         NavigationStack {
-            VStack(alignment: .leading, spacing: 16) {
-                
-                // MARK: - Header: Navegação por mês
-                MonthSelector(
-                    viewModel: MonthSelectorViewModel(selectedMonth: viewModel.currentMonth),
-                    onMonthChanged: { selectedDate in
-                        viewModel.currentMonth = selectedDate
-                    }
-                )
+            ScrollView{
+                VStack(alignment: .leading, spacing: 16) {
+                    
+                    MonthSelector(
+                        viewModel: MonthSelectorViewModel(selectedMonth: viewModel.currentMonth),
+                        onMonthChanged: { selectedDate in
+                            viewModel.currentMonth = selectedDate.startOfMonth()
+                        }
+                    )
 
-                // MARK: - Resumo do mês
-                ExpensesResumoView(
-                    income: viewModel.totalIncome(),
-                    expense: viewModel.totalExpense()
-                )
+                    .padding(.horizontal)
 
-                
-                ExpensesPorCategoriaListView(viewModel: viewModel)
-                    .frame(height: 200) // Ajustável, se necessário
-                    .background(Color(.systemGray6)) // Define o fundo
-                    .cornerRadius(16) // Aplica o arredondamento de canto
-                    .frame(maxWidth: .infinity) // Garante que ocupe a largura total
-                                
+                    ExpensesResumoView(
+                        income: viewModel.totalIncomeForCurrentMonth(),
+                        expense: viewModel.totalExpenseForCurrentMonth()
+                    )
+                    .padding(.horizontal)
 
-                
-                Text("Extrato de Transações")
-                    .font(.title3)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.primary)
-                    .padding(.horizontal, 8)
-                
-                // MARK: - Lista de despesas e rendas
-                ExpensesListView(viewModel: viewModel)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(16)
+                    ExpensesPorCategoriaListView(viewModel: viewModel)
+                        .frame(minHeight: 150, maxHeight: 500)
+                         .background(Color(.systemGray6))
+                         .cornerRadius(16)
+                         .padding(.horizontal)
+
+                    Text("Extrato de Transações")
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                        .padding(.horizontal)
+
+                    ExpensesListView(viewModel: viewModel)
+                        .frame(minHeight: 400)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(16)
+                        .padding(.horizontal)
+                    
+                }
+                .padding(.top)
+
             }
-            .padding()
-            .navigationTitle("Despesas")
+            .navigationTitle("Transações")
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button(action: {
-                        // ação para filtros
-                    }) {
-                        Image(systemName: "line.3.horizontal.decrease.circle")
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    Button {
+                        isAddTransactionPresented = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "plus.circle.fill")
+                            Text("Registrar")
+                        }
+                        .font(.headline)
                     }
                 }
+            }
+            .fullScreenCover(isPresented: $isAddTransactionPresented) {
+                AddTransactionView()
+                    .environmentObject(viewModel)
             }
         }
     }
 }
-
-#Preview {
-    ExpensesView()
-        .environmentObject(ExpensesViewModel())
-}
-

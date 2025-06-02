@@ -2,59 +2,124 @@
 //  CategoriesViewModel.swift
 //  CashUp
 //
-//  Created by Gustavo Souto Pereira on 09/05/25.
-// Lista e filtros de categoria
+//  Created by Gustavo Souto Pereira on 19/05/25.
+//
 
 import Foundation
+import SwiftData
+import SwiftUI
 
+enum TransactionTypeFilter {
+    case despesa
+    case receita
+}
+
+@MainActor
 class CategoriesViewModel: ObservableObject {
-    @Published var categorias: [Categoria] = CategoriasData.todas
-    @Published private(set) var frequenciaSubcategorias: [UUID: Int] = [:]
+
+    var modelContext: ModelContext
+    private var transactionType: TransactionTypeFilter
+
+    var subcategoriasMaisUsadas: [SubcategoriaModel] {
+        fetchSubcategoriasMaisUsadasInterno()
+    }
+
+    init(modelContext: ModelContext, transactionType: TransactionTypeFilter) {
+        self.modelContext = modelContext
+        self.transactionType = transactionType
+    }
+
+    func fetchTodasCategoriasModel() -> [CategoriaModel] {
+        let sortDescriptor = SortDescriptor(\CategoriaModel.nome, order: .forward)
+        var predicate: Predicate<CategoriaModel>?
+
+        switch transactionType {
+        case .despesa:
+            let rendaID = SeedIDs.idRenda
+            predicate = #Predicate<CategoriaModel> { categoria in
+                categoria.id != rendaID
+            }
+        case .receita:
+            let rendaID = SeedIDs.idRenda
+            predicate = #Predicate<CategoriaModel> { categoria in
+                categoria.id == rendaID
+            }
+        }
+        
+        let fetchDescriptor = FetchDescriptor<CategoriaModel>(predicate: predicate, sortBy: [sortDescriptor])
+        
+        do {
+            return try modelContext.fetch(fetchDescriptor)
+        } catch {
+            print("Erro ao buscar CategoriaModel filtradas: \(error)")
+            return []
+        }
+    }
     
-    private let userDefaultsKey = "frequenciaSubcategorias"
-
-    init() {
-        carregarFrequencia()
-    }
-
-    // Salvar frequência no UserDefaults
-    private func salvarFrequencia() {
-        let data = try? JSONEncoder().encode(frequenciaSubcategorias)
-        UserDefaults.standard.set(data, forKey: userDefaultsKey)
-    }
-
-    // Carregar frequência do UserDefaults
-    private func carregarFrequencia() {
-        if let data = UserDefaults.standard.data(forKey: userDefaultsKey),
-           let frequencia = try? JSONDecoder().decode([UUID: Int].self, from: data) {
-            self.frequenciaSubcategorias = frequencia
-            print("Frequência carregada:", frequencia) // ← AQUI
-        } else {
-            print("Nenhuma frequência encontrada.")
+    func findCategoriaModel(by id: UUID) -> CategoriaModel? {
+        let predicate = #Predicate<CategoriaModel> { $0.id == id }
+        var descriptor = FetchDescriptor(predicate: predicate)
+        descriptor.fetchLimit = 1 // Otimização
+        do {
+            return try modelContext.fetch(descriptor).first
+        } catch {
+            print("Erro ao buscar CategoriaModel com id \(id): \(error)")
+            return nil
         }
     }
 
-
-    // Quando o usuário usa uma subcategoria
-    func registrarUso(subcategoria: Subcategoria) {
-        frequenciaSubcategorias[subcategoria.id, default: 0] += 1
-        print("Registrando uso para \(subcategoria.nome):", frequenciaSubcategorias[subcategoria.id] ?? 0)
-        salvarFrequencia()
+    /// Busca uma SubcategoriaModel específica pelo seu ID.
+    func findSubcategoriaModel(by id: UUID) -> SubcategoriaModel? {
+        let predicate = #Predicate<SubcategoriaModel> { $0.id == id }
+        var descriptor = FetchDescriptor(predicate: predicate)
+        descriptor.fetchLimit = 1 // Otimização
+        do {
+            return try modelContext.fetch(descriptor).first
+        } catch {
+            print("Erro ao buscar SubcategoriaModel com id \(id): \(error)")
+            return nil
+        }
     }
 
-    var subcategoriasMaisUsadas: [Subcategoria] {
-        let todasSubcategorias = categorias.flatMap { $0.subcategorias }
+    func registrarUso(subcategoriaModel: SubcategoriaModel) {
+        subcategoriaModel.usageCount += 1
+        print("Registrando uso para \(subcategoriaModel.nome): novo usageCount = \(subcategoriaModel.usageCount)")
+        objectWillChange.send()
+    }
 
-        return todasSubcategorias
-            .filter { frequenciaSubcategorias[$0.id, default: 0] > 0 } // <- adicionado
-            .sorted {
-                let freqA = frequenciaSubcategorias[$0.id] ?? 0
-                let freqB = frequenciaSubcategorias[$1.id] ?? 0
-                return freqA > freqB
+    private func fetchSubcategoriasMaisUsadasInterno() -> [SubcategoriaModel] {
+        var predicate: Predicate<SubcategoriaModel>
+
+        switch transactionType {
+        case .despesa:
+            let rendaID = SeedIDs.idRenda
+            predicate = #Predicate<SubcategoriaModel> { subcategoria in
+                subcategoria.usageCount > 0 && subcategoria.categoria?.id != rendaID
             }
-            .prefix(6)
-            .map { $0 }
+        case .receita:
+            let rendaID = SeedIDs.idRenda
+            predicate = #Predicate<SubcategoriaModel> { subcategoria in
+                subcategoria.usageCount > 0 && subcategoria.categoria?.id == rendaID
+            }
+        }
+        
+        let sortDescriptor = SortDescriptor(\SubcategoriaModel.usageCount, order: .reverse)
+        var fetchDescriptor = FetchDescriptor<SubcategoriaModel>(predicate: predicate, sortBy: [sortDescriptor])
+        fetchDescriptor.fetchLimit = 6
+        
+        do {
+            return try modelContext.fetch(fetchDescriptor)
+        } catch {
+            print("Erro ao buscar subcategorias mais usadas (filtradas): \(error)")
+            return []
+        }
+    }
+
+    func getTransactionTypeFilter() -> TransactionTypeFilter {
+        return self.transactionType
+    }
+
+    func getModelContextForEditing() -> ModelContext {
+        return self.modelContext
     }
 }
-
-
