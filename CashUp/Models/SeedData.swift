@@ -1,11 +1,15 @@
-// Arquivo: CashUp/Models/SeedData.swift
-// Refatorado para criar @Models diretamente usando CategoriaSeedInfo e SubcategoriaSeedInfo.
+//
+//  SeedData.swift
+//  CashUp
+//
+//  Created by Gustavo Souto Pereira on 19/05/25.
+//
 
 import SwiftData
 import SwiftUI
 
 fileprivate struct CategoriaSeedInfo {
-    let id: UUID // Mantém para consistência se você tiver IDs específicos em mente
+    let id: UUID
     let nome: String
     let cor: Color
     let icon: String
@@ -13,12 +17,11 @@ fileprivate struct CategoriaSeedInfo {
 }
 
 fileprivate struct SubcategoriaSeedInfo {
-    let id: UUID // Mantém para consistência
+    let id: UUID
     let nome: String
     let icon: String
 }
 
-// Definição dos IDs estáticos para consistência.
 struct SeedIDs {
     static let idRenda           = UUID(uuidString: "A0A0A0A0-A0A0-A0A0-A0A0-A0A0A0A0A0A0")!
     static let idEntretenimento  = UUID(uuidString: "B1B1B1B1-B1B1-B1B1-B1B1-B1B1B1B1B1B1")!
@@ -100,12 +103,11 @@ struct SeedIDs {
     static let idSubInvestimentos       = UUID(uuidString: "00420042-0042-0042-0042-004200420042")!
     static let idSubJuros               = UUID(uuidString: "00430043-0043-0043-0043-004300430043")!
     static let idSubPensao              = UUID(uuidString: "00440044-0044-0044-0044-004400440044")!
-    static let idSubRendaGeral          = UUID(uuidString: "11111111-2222-3333-4444-555555555555")! // já válido
+    static let idSubRendaGeral          = UUID(uuidString: "11111111-2222-3333-4444-555555555555")!
     static let idSubSalario             = UUID(uuidString: "00460046-0046-0046-0046-004600460046")!
     static let idSubSalarioFamilia      = UUID(uuidString: "00470047-0047-0047-0047-004700470047")!
 }
 
-// Função para converter Color para RGB (já que Color não pode ser @Model direto)
 fileprivate extension Color {
     func toRGBComponents() -> (red: Double, green: Double, blue: Double) {
         #if os(iOS) || os(tvOS) || os(watchOS)
@@ -115,13 +117,11 @@ fileprivate extension Color {
         UIColor(self).getRed(&red, green: &green, blue: &blue, alpha: nil)
         return (Double(red), Double(green), Double(blue))
         #else
-        return (0, 0, 0) // fallback para macOS se necessário
+        return (0, 0, 0)
         #endif
     }
 }
 
-// Array com os dados de seed para todas as categorias
-// Usando as structs CategoriaSeedInfo e SubcategoriaSeedInfo
 fileprivate let todasCategoriasSeedInfo: [CategoriaSeedInfo] = [
     CategoriaSeedInfo(
         id: SeedIDs.idDiversos,
@@ -252,7 +252,6 @@ fileprivate let todasCategoriasSeedInfo: [CategoriaSeedInfo] = [
     )
 ]
 
-// Função para popular os dados iniciais
 @MainActor
 func popularDadosIniciaisSeNecessario(modelContext: ModelContext) async {
     let fetchDescriptor = FetchDescriptor<CategoriaModel>()
@@ -269,7 +268,7 @@ func popularDadosIniciaisSeNecessario(modelContext: ModelContext) async {
     print("Populando dados iniciais de categoria...")
     for categoriaSeed in todasCategoriasSeedInfo {
         let novaCategoriaModel = CategoriaModel(
-            id: categoriaSeed.id, // Usa o ID do CategoriaSeedInfo (que pode ser fixo ou UUID())
+            id: categoriaSeed.id,
             nome: categoriaSeed.nome,
             icon: categoriaSeed.icon,
             color: categoriaSeed.cor
@@ -278,7 +277,7 @@ func popularDadosIniciaisSeNecessario(modelContext: ModelContext) async {
         var subcategoriasParaEsteModelo: [SubcategoriaModel] = []
         for subcategoriaSeed in categoriaSeed.subcategorias {
             let novaSubcategoriaModel = SubcategoriaModel(
-                id: subcategoriaSeed.id, // Usa o ID do SubcategoriaSeedInfo (que pode ser UUID())
+                id: subcategoriaSeed.id,
                 nome: subcategoriaSeed.nome,
                 icon: subcategoriaSeed.icon,
                 categoria: novaCategoriaModel

@@ -8,7 +8,7 @@
 import SwiftUI
 import Charts
 
-struct IdentifiableDate: Identifiable { // Mantida como estava
+struct IdentifiableDate: Identifiable {
     let id: UUID
     let date: Date
 
@@ -28,14 +28,10 @@ struct InteractiveDailyExpensesChart: View {
 
     let selectedBarBlue = Color(red: 0.1, green: 0.45, blue: 1.0)
 
-    // Calcula o valor máximo de gasto para definir a escala do eixo Y
     private var maxYValue: Double {
-        // Adiciona um pequeno buffer para a anotação não cortar no topo.
-        // Se não houver dados ou todos forem 0, define um máximo padrão para o gráfico não colapsar.
         (dailyData.map { $0.totalExpenses }.max() ?? 0) * 1.1 + (dailyData.isEmpty || dailyData.allSatisfy { $0.totalExpenses == 0 } ? 100 : 0)
     }
     
-    // Encontra o item de dados para a data selecionada
     private var selectedDailyItem: DailyExpenseItem? {
         guard let selectedDate = selectedDate else { return nil }
         return dailyData.first { Calendar.current.isDate($0.date, inSameDayAs: selectedDate) }
@@ -48,7 +44,7 @@ struct InteractiveDailyExpensesChart: View {
                     BarMark(
                         x: .value("Dia", item.date, unit: .day),
                         y: .value("Gasto", item.totalExpenses),
-                        width: .automatic // Deixa o sistema decidir a largura, ou defina um valor fixo/min
+                        width: .automatic
                     )
                     .foregroundStyle(barColor(for: item))
                     .cornerRadius(4)
@@ -58,7 +54,6 @@ struct InteractiveDailyExpensesChart: View {
                             .foregroundStyle(Color.gray.opacity(0.5))
                             .zIndex(-1)
                             .annotation(position: .top, alignment: .center, spacing: 0) {
-                                // Mostrar anotação mesmo se o gasto for 0 para o dia de hoje, se selecionado
                                 if item.totalExpenses > 0 || (Calendar.current.isDate(item.date, inSameDayAs: Date()) && item.totalExpenses == 0) {
                                     valueAnnotation(for: item)
                                 }
@@ -76,11 +71,10 @@ struct InteractiveDailyExpensesChart: View {
             .chartYAxis {
                 AxisMarks(preset: .automatic, values: .automatic(desiredCount: 4)) { value in
                      AxisGridLine()
-                     AxisValueLabel() // O formato padrão já deve ser bom
+                     AxisValueLabel()
                  }
             }
-            // Define explicitamente a escala do eixo Y para estabilizar o gráfico
-            .chartYScale(domain: 0...max(10, maxYValue)) // Garante que o eixo Y tenha pelo menos uma altura de 10
+            .chartYScale(domain: 0...max(10, maxYValue))
             .chartOverlay { proxy in
                 GeometryReader { geometry in
                     Rectangle().fill(Color.clear).contentShape(Rectangle())
@@ -142,7 +136,6 @@ struct InteractiveDailyExpensesChart: View {
                 }
             }
             
-            // Botão para ver detalhes do dia, aparece se uma data estiver selecionada E HOUVER GASTOS NESSE DIA
             if let item = selectedDailyItem, item.totalExpenses > 0 {
                 Button {
                     self.dateItemForSheet = IdentifiableDate(date: item.date)
@@ -193,13 +186,12 @@ struct InteractiveDailyExpensesChart: View {
         let count = dailyData.count
         if count == 0 { return 1}
         if count <= 7 {
-            return 1 // Mostra todos os dias se for uma semana ou menos
-        } else if count <= 10 { // Ajuste para melhor visualização com poucos dados
+            return 1
+        } else if count <= 10 {
             return 2
         } else if count <= 20 {
             return 3
         }
-        return 7 // Para um mês inteiro, mostrar a cada 7 dias (semanalmente) pode ser uma boa
-                 // Ou mantenha 5 se preferir
+        return 7 
     }
 }

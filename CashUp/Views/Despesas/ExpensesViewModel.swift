@@ -9,11 +9,10 @@ import Foundation
 import SwiftData
 import SwiftUI
 
-// Enum para escopos de deleção de despesas recorrentes
 enum RecurringExpenseDeletionScope {
     case thisOccurrenceOnly
     case thisAndAllFutureOccurrences
-    case entireSeries // Adicionando de volta para consistência, mesmo que a lógica de removeExpense o trate de forma similar a deletar a base
+    case entireSeries
 }
 
 @MainActor
@@ -29,7 +28,7 @@ class ExpensesViewModel: ObservableObject, ExpenseCalculation {
         }
     }
     
-    @Published var selectedTransactionType: Int = 0 { // 0: Despesa, 1: Receita
+    @Published var selectedTransactionType: Int = 0 {
         didSet {
             loadDisplayableExpenses()
         }
@@ -93,8 +92,6 @@ class ExpensesViewModel: ObservableObject, ExpenseCalculation {
                     return
                 }
 
-                // Para modificar RepetitionData (que é uma struct), precisamos obter uma cópia,
-                // modificá-la e depois reatribuí-la ao modelo.
                 var repetitionDataCopy = originalExpenseModel.repetition
 
                 if repetitionDataCopy == nil && (effectiveScope == .thisOccurrenceOnly || effectiveScope == .thisAndAllFutureOccurrences) {
@@ -126,17 +123,15 @@ class ExpensesViewModel: ObservableObject, ExpenseCalculation {
                         } else {
                             print("Nova data final inválida ou antes do início para recorrência ID: \(originalID). Deletando a série inteira como fallback.")
                             modelContext.delete(originalExpenseModel)
-                            repetitionDataCopy = nil // Define como nil para não tentar salvar e evitar erro se originalExpenseModel foi deletada
+                            repetitionDataCopy = nil
                         }
                     }
                 case .entireSeries:
                     print("Deletando toda a série recorrente original com ID: \(originalID)")
                     modelContext.delete(originalExpenseModel)
-                    repetitionDataCopy = nil // Modelo original foi deletado, não há o que reatribuir
+                    repetitionDataCopy = nil
                 }
-                
-                // Reatribui a struct repetitionData modificada de volta ao modelo,
-                // somente se o modelo original não foi deletado no switch.
+
                 if effectiveScope != .entireSeries && !(effectiveScope == .thisAndAllFutureOccurrences && repetitionDataCopy == nil) {
                      originalExpenseModel.repetition = repetitionDataCopy
                 }
@@ -238,8 +233,6 @@ class ExpensesViewModel: ObservableObject, ExpenseCalculation {
         }
         return allDisplayableTransactions
     }
-    
-    // Dentro de ExpensesViewModel.swift
 
     func fetchTransactions(forSpecificDate date: Date, isIncome: Bool?) -> [DisplayableExpense] {
         let calendar = Calendar.current
@@ -252,8 +245,6 @@ class ExpensesViewModel: ObservableObject, ExpenseCalculation {
 
         var displayableTransactionsForDay: [DisplayableExpense] = []
 
-        // 1. Buscar TODAS as definições de ExpenseModel (únicas e bases de recorrentes)
-        //    Não filtramos por data aqui ainda, pois a data de início da recorrência pode ser antiga.
         let fetchAllDescriptor = FetchDescriptor<ExpenseModel>(sortBy: [SortDescriptor(\ExpenseModel.date, order: .forward)])
         
         do {
@@ -261,19 +252,14 @@ class ExpensesViewModel: ObservableObject, ExpenseCalculation {
             
             for expense in allPersistedExpenses {
                 if expense.repetition != nil && expense.repetition?.repeatOption != .nunca {
-                    // É uma despesa base recorrente.
-                    // Gere suas ocorrências para o MÊS que contém o 'specificDate',
-                    // pois uma recorrência pode ter começado em um mês anterior mas ocorrer no 'specificDate'.
                     let occurrencesInMonth = expense.generateOccurrences(forDateInterval: monthContainingDay, calendar: calendar)
-                    // Agora filtre essas ocorrências do mês para apenas aquelas do 'specificDate'.
                     for occurrence in occurrencesInMonth {
                         if calendar.isDate(occurrence.date, inSameDayAs: date) {
                             displayableTransactionsForDay.append(occurrence)
                         }
                     }
                 } else {
-                    // É uma despesa única, adicione se cair no 'specificDate'.
-                    if calendar.isDate(expense.date, inSameDayAs: date) { // Compara o dia
+                    if calendar.isDate(expense.date, inSameDayAs: date) {
                         displayableTransactionsForDay.append(DisplayableExpense(from: expense))
                     }
                 }
@@ -283,7 +269,6 @@ class ExpensesViewModel: ObservableObject, ExpenseCalculation {
             return []
         }
         
-        // Aplicar filtro de isIncome se fornecido
         if let incomeStatus = isIncome {
             return displayableTransactionsForDay.filter { $0.isIncome == incomeStatus }
         }
@@ -378,44 +363,41 @@ class ExpensesViewModel: ObservableObject, ExpenseCalculation {
     }
 }
 
-struct DisplayableExpense: Identifiable, Hashable { // Hashable se for usar em Set ou ForEach com id
-    let id: UUID // Pode ser o id da ExpenseModel original ou um novo UUID para a ocorrência
-    let originalExpenseID: UUID? // ID da ExpenseModel base se for uma ocorrência recorrente
+struct DisplayableExpense: Identifiable, Hashable {
+    let id: UUID
+    let originalExpenseID: UUID?
     var amount: Double
     var date: Date
     var expenseDescription: String
     var isIncome: Bool
     var categoria: CategoriaModel?
     var subcategoria: SubcategoriaModel?
-    var isRecurringInstance: Bool // true se for uma ocorrência gerada
+    var isRecurringInstance: Bool
     
-    // Inicializador para despesas únicas
     init(from expense: ExpenseModel) {
         self.id = expense.id
-        self.originalExpenseID = nil // Não é uma instância de recorrência no sentido de ser gerada
+        self.originalExpenseID = nil
         self.amount = expense.amount
         self.date = expense.date
         self.expenseDescription = expense.expenseDescription
         self.isIncome = expense.isIncome
         self.categoria = expense.categoria
         self.subcategoria = expense.subcategoria
-        self.isRecurringInstance = expense.repetition != nil // Se tem dados de repetição, é a base de uma
+        self.isRecurringInstance = expense.repetition != nil
     }
     
-    // Inicializador para ocorrências geradas de despesas recorrentes
     init(from recurringExpense: ExpenseModel, occurrenceDate: Date) {
-        self.id = UUID() // Nova ID para esta ocorrência virtual específica
-        self.originalExpenseID = recurringExpense.id // Link para o modelo original
+        self.id = UUID()
+        self.originalExpenseID = recurringExpense.id
         self.amount = recurringExpense.amount
-        self.date = occurrenceDate // A data específica desta ocorrência
+        self.date = occurrenceDate
         self.expenseDescription = recurringExpense.expenseDescription
         self.isIncome = recurringExpense.isIncome
         self.categoria = recurringExpense.categoria
         self.subcategoria = recurringExpense.subcategoria
         self.isRecurringInstance = true
     }
-    
-    // Necessário para Hashable se você usar UUIDs diferentes para ocorrências
+
     static func == (lhs: DisplayableExpense, rhs: DisplayableExpense) -> Bool {
         lhs.id == rhs.id
     }

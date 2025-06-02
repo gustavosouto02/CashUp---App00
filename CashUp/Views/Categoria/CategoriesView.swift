@@ -1,27 +1,27 @@
-// Arquivo: CashUp/Views/Categoria/CategoriesView.swift
-// Refatorado para receber o ViewModel configurado
+//
+//  CategoriesView.swift
+//  CashUp
+//
+//  Created by Gustavo Souto Pereira on 19/05/25.
+//
 
 import SwiftUI
 import SwiftData
 
 struct CategoriesView: View {
-    // ViewModel agora é um @ObservedObject, injetado pela view pai (CategorySelectionSheet)
     @ObservedObject var viewModel: CategoriesViewModel
-    // @Environment(\.modelContext) private var modelContext // Não mais necessário aqui para inicializar o VM
 
     @State private var isEditing = false
     @State private var selectedCategoriaModelID: UUID? = nil
     
     var onSubcategoriaModelSelected: (SubcategoriaModel) -> Void
 
-    // Inicializador agora recebe o ViewModel já configurado
     init(viewModel: CategoriesViewModel, onSubcategoriaModelSelected: @escaping (SubcategoriaModel) -> Void) {
         self.viewModel = viewModel
         self.onSubcategoriaModelSelected = onSubcategoriaModelSelected
     }
 
     var body: some View {
-        // let _ = Self._printChanges() // Para depuração
 
         NavigationStack {
             VStack(spacing: 0) {

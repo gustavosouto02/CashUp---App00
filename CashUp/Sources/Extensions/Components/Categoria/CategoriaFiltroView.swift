@@ -1,4 +1,9 @@
-// Arquivo: CashUp/Sources/Extensions/Components/Categoria/CategoriaFiltroView.swift
+//
+//  CategoriaFiltroView.swift
+//  CashUp
+//
+//  Created by Gustavo Souto Pereira on 19/05/25.
+//
 
 import SwiftUI
 import SwiftData
@@ -9,7 +14,7 @@ struct CategoriaFiltroView: View {
     var onSubcategoriaSelected: (SubcategoriaModel) -> Void
     var subcategoriasFrequentes: [SubcategoriaModel]
     var transactionType: TransactionTypeFilter
-
+    
     private let buttonSize: CGFloat = 70
     private let buttonCornerRadius: CGFloat = 12
     
@@ -48,7 +53,7 @@ struct CategoriaFiltroView: View {
                 cor: categoriaModel?.color ?? .gray,
                 size: 30
             )
-
+            
             Text(subcategoriaModel.nome)
                 .font(.footnote)
                 .foregroundStyle(.primary)
@@ -150,18 +155,15 @@ struct CategoriaFiltroView: View {
             let categoriasParaExibir = categorias.filter { categoriaModel in
                 selectedCategoriaID == nil || categoriaModel.id == selectedCategoriaID
             }
-
-            // Verifica se há categorias para exibir (seja "Todas" ou uma específica)
+            
             if !categoriasParaExibir.isEmpty {
                 ForEach(categoriasParaExibir) { categoriaModel in
-                    // Cada categoria agora é um "card" com seu título sempre visível
                     VStack(alignment: .leading, spacing: 8) {
-                        // TÍTULO DA CATEGORIA - SEMPRE VISÍVEL PARA ESTA CATEGORIA
                         Text(categoriaModel.nome)
                             .font(.title3.bold())
-                            .padding(.horizontal) // Padding para o título dentro do seu card
-                            .padding(.top, 8) // Espaço no topo do card da categoria
-
+                            .padding(.horizontal)
+                            .padding(.top, 8)
+                        
                         let subcategoriasDaCategoria = (categoriaModel.subcategorias ?? []).sorted { $0.nome < $1.nome }
                         
                         if !subcategoriasDaCategoria.isEmpty {
@@ -170,33 +172,24 @@ struct CategoriaFiltroView: View {
                                     subcategoriaCard(categoriaModel: categoriaModel, subcategoriaModel: subcategoriaModel)
                                 }
                             }
-                            .padding(.horizontal) // Padding para a grid de subcategorias
+                            .padding(.horizontal)
                         } else {
-                            // Mensagem se a categoria não tem subcategorias
                             Text("Nenhuma subcategoria encontrada para \(categoriaModel.nome).")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                                 .padding(.horizontal)
                                 .padding(.bottom, 8)
-                                .frame(maxWidth: .infinity, alignment: .center) // Centraliza se for a única coisa
+                                .frame(maxWidth: .infinity, alignment: .center)
                         }
                     }
-                    .padding(.vertical, 12) // Padding vertical interno para o card da categoria
+                    .padding(.vertical, 12)
                     .background(Color(.secondarySystemBackground))
                     .cornerRadius(12)
-                    .padding(.horizontal) // Padding externo para o card da categoria
-                    .padding(.bottom, 16) // Espaçamento entre os cards de categoria
+                    .padding(.horizontal)
+                    .padding(.bottom, 16)
                 }
             } else if selectedCategoriaID != nil && categoriasParaExibir.isEmpty {
-                // Este caso é quando um filtro de categoria específico é aplicado,
-                // mas essa categoria não está na lista `categorias` (improvável) ou não tem subs para mostrar.
-                // A lógica acima já trata "Nenhuma subcategoria encontrada para..."
-                // Se `categorias` em si estiver vazia, a `CategoriesView` mostraria uma mensagem de "nenhuma categoria".
-                // Poderia adicionar uma mensagem genérica aqui se `categorias` não estiver vazia, mas `categoriasParaExibir` sim
-                // devido a um `selectedCategoriaID` que não corresponde a nenhuma categoria na lista `categorias`.
-                // No entanto, a `CategoriesViewModel` já deve fornecer a lista correta de `categorias`
-                // com base no `transactionType`.
-                 Text("Nenhuma categoria corresponde ao filtro selecionado.")
+                Text("Nenhuma categoria corresponde ao filtro selecionado.")
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .padding()

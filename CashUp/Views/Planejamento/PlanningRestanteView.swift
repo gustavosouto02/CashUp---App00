@@ -1,21 +1,24 @@
-// Arquivo: CashUp/Views/Planejamento/PlanningRestanteView.swift
-// Refatorado para SwiftData
+//
+//  PlanningRestanteView.swift
+//  CashUp
+//
+//  Created by Gustavo Souto Pereira on 19/05/25.
+//
+
 
 import SwiftUI
 import SwiftData
 
 struct PlanningRestanteView: View {
-    @ObservedObject var planningViewModel: PlanningViewModel // ViewModel refatorado
-    @ObservedObject var expensesViewModel: ExpensesViewModel // ViewModel refatorado
+    @ObservedObject var planningViewModel: PlanningViewModel
+    @ObservedObject var expensesViewModel: ExpensesViewModel
 
-    // Os dados de planejamento agora vêm de uma função no PlanningViewModel
-    // que retorna [CategoriaPlanejadaModel].
     private var categoriasPlanejadasDoMes: [CategoriaPlanejadaModel] {
         planningViewModel.getCategoriasPlanejadasForCurrentMonth()
     }
 
     var body: some View {
-        ScrollView { // Adicionado ScrollView para conteúdo que pode exceder
+        ScrollView {
             VStack(alignment: .leading, spacing: 20) {
 
                 // MARK: - Meta Residual
@@ -30,31 +33,26 @@ struct PlanningRestanteView: View {
                         .frame(maxWidth: .infinity, alignment: .center)
                 } else {
                     ForEach(categoriasPlanejadasDoMes) { categoriaPlanejadaModel in
-                        // Passa CategoriaPlanejadaModel para a subview
                         categoriaRestanteView(categoriaPModel: categoriaPlanejadaModel)
                     }
                 }
-                Spacer(minLength: 24) // Adicionado Spacer para garantir espaço no final
+                Spacer(minLength: 24)
             }
-            .padding(.horizontal) // Adicionado padding ao VStack principal
+            .padding(.horizontal)
         }
     }
 
     @ViewBuilder
     private func metaResidualCard() -> some View {
-        // Usa a função do PlanningViewModel que já opera com os modelos SwiftData
         let totalPlanejado = planningViewModel.valorTotalPlanejadoParaMesAtual()
-        
-        // A função em ExpensesViewModel agora espera [CategoriaPlanejadaModel]
+
         let totalGastoEmPlanejado = expensesViewModel.calcularTotalGastoEmCategoriasPlanejadas(
-            paraMes: planningViewModel.currentMonth, // Usa o currentMonth do planningViewModel
-            categoriasPlanejadas: categoriasPlanejadasDoMes // Passa o array de CategoriaPlanejadaModel
+            paraMes: planningViewModel.currentMonth,
+            categoriasPlanejadas: categoriasPlanejadasDoMes
         )
         
         let restante = totalPlanejado - totalGastoEmPlanejado
         let progresso = totalPlanejado > 0 ? min(abs(totalGastoEmPlanejado / totalPlanejado), 1.0) : 0.0
-        // Corrigido para abs(totalGastoEmPlanejado / totalPlanejado) para garantir que o progresso não seja negativo
-        // e para mudar a cor do gradiente se o restante for negativo.
         
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 16) {
@@ -66,7 +64,7 @@ struct PlanningRestanteView: View {
                         .trim(from: 0.0, to: CGFloat(progresso))
                         .stroke(
                             LinearGradient(
-                                colors: restante < 0 ? [.orange, .red] : [.green, .blue], // Muda cor se estourou
+                                colors: restante < 0 ? [.orange, .red] : [.green, .blue],
                                 startPoint: .top,
                                 endPoint: .bottom
                             ),
@@ -83,7 +81,7 @@ struct PlanningRestanteView: View {
                         .font(.subheadline)
                         .padding(.bottom, 2)
 
-                    Text(formatCurrency(restante)) //
+                    Text(formatCurrency(restante))
                         .font(.title.bold())
                         .foregroundStyle(restante < 0 ? .red : .primary)
 
@@ -113,7 +111,7 @@ struct PlanningRestanteView: View {
 
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                CategoriasViewIcon( //
+                CategoriasViewIcon(
                     systemName: categoriaPModel.iconCategoriaOriginal,
                     cor: categoriaPModel.corCategoriaOriginal,
                     size: 22
@@ -139,14 +137,14 @@ struct PlanningRestanteView: View {
                         HStack {
                             CategoriasViewIcon( //
                                 systemName: subPlanModel.iconSubcategoriaOriginal,
-                                cor: categoriaPModel.corCategoriaOriginal, // Cor da categoria pai
+                                cor: categoriaPModel.corCategoriaOriginal,
                                 size: 20
                             )
                             Text(subPlanModel.nomeSubcategoriaOriginal)
                                 .font(.headline)
                     
                             Spacer()
-                            Text("\(formatCurrency(gastoNaSub)) / \(formatCurrency(limiteDaSub))") //
+                            Text("\(formatCurrency(gastoNaSub)) / \(formatCurrency(limiteDaSub))")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
@@ -154,7 +152,7 @@ struct PlanningRestanteView: View {
                         .padding(.bottom, 4)
 
                         ProgressView(value: progressoSub)
-                            .tint(gastoNaSub > limiteDaSub ? .red : categoriaPModel.corCategoriaOriginal) // Vermelho se estourou
+                            .tint(gastoNaSub > limiteDaSub ? .red : categoriaPModel.corCategoriaOriginal)
                             .padding(.leading, 8)
                     }
                     .padding(.bottom, 4)

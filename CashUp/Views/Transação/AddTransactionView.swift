@@ -1,5 +1,9 @@
-// Arquivo: CashUp/Views/Transação/AddTransactionView.swift
-// Refatorado para SwiftData e uso consistente dos @Models
+//
+//  AddTransactionView.swift
+//  CashUp
+//
+//  Created by Gustavo Souto Pereira on 27/05/25.
+//
 
 import SwiftUI
 import SwiftData
@@ -7,7 +11,7 @@ import SwiftData
 struct AddTransactionView: View {
     @Environment(\.sizeCategory) var sizeCategory
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var modelContext // Usado para criar CategoriesViewModel
+    @Environment(\.modelContext) private var modelContext
 
     @StateObject private var addTransactionVM = AddTransactionViewModel()
     
@@ -30,7 +34,6 @@ struct AddTransactionView: View {
                             .padding(.horizontal)
 
                         CurrencyAmountField(amount: $addTransactionVM.amount)
-                            .padding(.vertical, 10)
 
                         transactionDetailsSection
                             .padding(.horizontal)

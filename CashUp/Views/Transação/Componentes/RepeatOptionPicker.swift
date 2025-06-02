@@ -1,3 +1,10 @@
+//
+//  RepeatOptionPicker.swift
+//  CashUp
+//
+//  Created by Gustavo Souto Pereira on 27/05/25.
+//
+
 import SwiftUI
 
 enum RepeatOption: String, CaseIterable, Identifiable, Codable {
@@ -13,27 +20,24 @@ enum RepeatOption: String, CaseIterable, Identifiable, Codable {
 
 import SwiftUI
 
-// Enum RepeatOption (como você já tem)
-// enum RepeatOption: String, CaseIterable, Identifiable, Codable { ... }
-
 struct RepeatOptionPicker: View {
     @Binding var repeatOption: RepeatOption
-    @Binding var isRepeatDialogPresented: Bool // Para o dialog de seleção de frequência
+    @Binding var isRepeatDialogPresented: Bool
     @Binding var repeatEndDate: Date?
-    var selectedDate: Date // Data da transação, para o limite inferior do DatePicker de repeatEndDate
+    var selectedDate: Date
 
-    // NOVO: Estado para o alerta de sugestão de data final
     @State private var shouldSuggestEndDate: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Button(action: {
+                    dismissKeyboard() 
                     isRepeatDialogPresented = true
                 }) {
                     HStack(spacing: 4) {
                         Label("Repetir", systemImage: "repeat")
-                            .font(.title2) // Mantido como title2
+                            .font(.title2)
                             .foregroundStyle(.primary)
                         Spacer()
                         Image(systemName: "chevron.left")
@@ -57,41 +61,37 @@ struct RepeatOptionPicker: View {
                             repeatEndDate = nil
                             shouldSuggestEndDate = false
                         } else if oldValue == .nunca && option != .nunca && repeatEndDate == nil {
-                            // Se estava em "Nunca" e mudou para uma repetição real, E a data final ainda não foi definida,
-                            // sugere definir a data final.
                             shouldSuggestEndDate = true
                         }else if option != .nunca && repeatEndDate != nil {
-                            // Se já tem data final e escolheu uma repetição, não precisa mais sugerir.
                             shouldSuggestEndDate = false
                         }
                     }
                 }
             }
             
-            // DatePicker para repeatEndDate (já existente e correto)
             if repeatOption != .nunca {
-                VStack(alignment: .leading, spacing: 8) { // Mantido o VStack para consistência visual
-                    Divider().padding(.top, 4) // Adiciona um divisor visual
+                VStack(alignment: .leading, spacing: 8) {
+                    Divider().padding(.top, 4)
                     HStack {
-                        Text("Parar repetição em") // Texto mais claro
+                        Text("Parar repetição em")
                             .font(.headline)
                         Spacer()
                         DatePicker(
                             "Data de término",
-                            selection: Binding( // Binding para lidar com o valor opcional
+                            selection: Binding(
                                 get: { repeatEndDate ?? calculateDefaultEndDate() },
                                 set: { newValue in
                                     repeatEndDate = newValue
                                     shouldSuggestEndDate = false
                                 }
                             ),
-                            in: selectedDate..., // A data de término não pode ser anterior à data da transação
+                            in: selectedDate...,
                             displayedComponents: [.date]
                         )
                         .datePickerStyle(.compact)
                         .labelsHidden()
                         .environment(\.locale, Locale(identifier: "pt_BR"))
-                        .padding(shouldSuggestEndDate && repeatEndDate == nil ? 1 : 0) // Adiciona padding para o anel
+                        .padding(shouldSuggestEndDate && repeatEndDate == nil ? 1 : 0)
                         .overlay(
                             RoundedRectangle(cornerRadius: 8)
                                 .stroke(shouldSuggestEndDate && repeatEndDate == nil ? Color.orange : Color.clear, lineWidth: 2)
@@ -99,7 +99,7 @@ struct RepeatOptionPicker: View {
                         )
                     }
                     if shouldSuggestEndDate && repeatEndDate == nil {
-                        Text("Opcional: defina uma data para encerrar a repetição ou ela continuará por 3 meses como padrão.")
+                        Text("Opcional: defina uma data para encerrar a repetição ou ela continuará por 1 ano como padrão.")
                             .font(.caption2)
                             .foregroundColor(.orange)
                             .padding(.leading, 2) // Pequena indentação
@@ -120,8 +120,7 @@ struct RepeatOptionPicker: View {
         }
     }
 
-    // Função para calcular uma data final padrão se nenhuma estiver definida (ex: 1 ano no futuro)
     private func calculateDefaultEndDate() -> Date {
-        return Calendar.current.date(byAdding: .month, value: 3, to: selectedDate) ?? selectedDate
+        return Calendar.current.date(byAdding: .year, value: 1, to: selectedDate) ?? selectedDate
     }
 }

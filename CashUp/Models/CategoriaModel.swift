@@ -6,7 +6,7 @@
 //
 
 import SwiftData
-import SwiftUI // Para Color
+import SwiftUI 
 
 @Model
 final class CategoriaModel {

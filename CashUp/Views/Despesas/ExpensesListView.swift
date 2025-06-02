@@ -11,7 +11,6 @@ import SwiftData
 struct ExpensesListView: View {
     @ObservedObject var viewModel: ExpensesViewModel
 
-    // Estados para o confirmation dialog de deleção de recorrências
     @State private var expenseToDelete: DisplayableExpense? = nil
     @State private var showRecurrenceDeleteOptions: Bool = false
 
@@ -24,14 +23,6 @@ struct ExpensesListView: View {
             if transacoesDoMesParaExibicao.isEmpty {
                 VStack {
                     Spacer()
-//                    Image(systemName: "tray.fill")
-//                        .font(.system(size: 50))
-//                        .foregroundStyle(Color.secondary.opacity(0.5))
-//                        .padding(.bottom, 8)
-//                    Text(viewModel.selectedTransactionType == 0 ? "Nenhuma despesa neste mês" : "Nenhuma receita neste mês")
-//                        .font(.title3)
-//                        .fontWeight(.medium)
-//                        .foregroundStyle(.secondary)
                     Text(viewModel.selectedTransactionType == 0 ? "Que tal registrar sua primeira despesa?" : "Que tal registrar sua primeira receita?")
                         .font(.callout)
                         .foregroundStyle(.tertiary)
@@ -78,11 +69,11 @@ struct ExpensesListView: View {
                     }
                 }
                 .listStyle(.plain)
-                .confirmationDialog( // Movido para ser aplicado na List ou Group
+                .confirmationDialog(
                     "Apagar Transação Recorrente",
                     isPresented: $showRecurrenceDeleteOptions,
                     presenting: expenseToDelete
-                ) { expense in // 'expense' aqui é o 'expenseToDelete' desempacotado
+                ) { expense in
                     Button("Apagar somente esta ocorrência") {
                         viewModel.removeExpense(expense, scope: .thisOccurrenceOnly)
                         self.expenseToDelete = nil
@@ -168,7 +159,6 @@ struct DisplayableExpenseRow: View {
     }
 }
 
-// Funções utilitárias globais (se não estiverem em outro lugar)
 func formatSectionDate(_ date: Date) -> String {
     let dateFormatter = DateFormatter()
     dateFormatter.locale = Locale(identifier: "pt_BR")

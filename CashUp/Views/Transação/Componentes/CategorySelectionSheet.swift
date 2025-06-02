@@ -1,5 +1,9 @@
-// Arquivo: CashUp/Views/Transação/Componentes/CategorySelectionSheet.swift
-// Refatorado para receber o CategoriesViewModel já configurado
+//
+//  CategorySelectionSheet.swift
+//  CashUp
+//
+//  Created by Gustavo Souto Pereira on 13/05/25.
+//
 
 import SwiftUI
 import SwiftData
@@ -10,7 +14,6 @@ struct CategorySelectionSheet: View {
     @Binding var selectedCategoryModel: CategoriaModel?
     @ObservedObject var viewModel: CategoriesViewModel
 
-    // O init agora espera o ViewModel já configurado pela view que a chama.
     init(viewModel: CategoriesViewModel,
          selectedSubcategoryModel: Binding<SubcategoriaModel?>,
          isPresented: Binding<Bool>,

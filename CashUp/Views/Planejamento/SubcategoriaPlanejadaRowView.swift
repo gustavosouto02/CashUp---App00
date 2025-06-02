@@ -5,26 +5,19 @@
 //  Created by Gustavo Souto Pereira on 19/05/25.
 //
 
-// Arquivo: CashUp/Views/Planejamento/SubcategoriaPlanejadaRowView.swift
-// Refatorado para SwiftData
 
 import SwiftUI
 import SwiftData
 
 struct SubcategoriaPlanejadaRowView: View {
-    // Agora recebe um Binding para o @Model SubcategoriaPlanejadaModel.
-    // Este binding deve vir da PlanningPlanejarView, que o obtém do array de modelos do PlanningViewModel.
-    // É crucial que este seja um binding para um objeto gerenciado pelo SwiftData.
+
     @Bindable var subPlanejadaModel: SubcategoriaPlanejadaModel
     
     let corIconeCategoriaPai: Color
     var isEditing: Bool
     var isSelected: Bool
     var toggleSelection: () -> Void
-    
-    // O PlanningViewModel agora fornecerá o Binding<String> para o valorPlanejado.
-    // Precisamos de uma referência ao PlanningViewModel aqui ou que o binding seja passado.
-    // Para simplificar, vamos assumir que PlanningPlanejarView passa o Binding<String> já formatado.
+
     @Binding var valorPlanejadoStringBinding: String
 
     var body: some View {
@@ -39,10 +32,9 @@ struct SubcategoriaPlanejadaRowView: View {
                     .buttonStyle(PlainButtonStyle())
                 }
 
-                // Acessa as propriedades do subcategoriaOriginal (que é SubcategoriaModel)
                 CategoriasViewIcon(
                     systemName: subPlanejadaModel.subcategoriaOriginal?.icon ?? "questionmark.circle",
-                    cor: corIconeCategoriaPai, // A cor vem da CategoriaModel pai
+                    cor: corIconeCategoriaPai,
                     size: 22
                 )
 
@@ -51,12 +43,10 @@ struct SubcategoriaPlanejadaRowView: View {
 
                 Spacer()
 
-                // Usa o Binding<String> passado pela PlanningPlanejarView,
-                // que por sua vez o obteve do PlanningViewModel.
                 TextField("R$", text: $valorPlanejadoStringBinding)
                     .keyboardType(.decimalPad)
                     .multilineTextAlignment(.trailing)
-                    .frame(width: 80) // Ajuste conforme necessário
+                    .frame(width: 80) 
                     .padding(5)
                     .background(Color.gray.opacity(0.1))
                     .cornerRadius(6)

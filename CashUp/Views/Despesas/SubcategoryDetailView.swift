@@ -1,35 +1,37 @@
+//
+//  SubcategoryDetailView.swift
+//  CashUp
+//
+//  Created by Gustavo Souto Pereira on 21/05/25.
+//
+
 import SwiftUI
 import SwiftData
 
-// A struct auxiliar ExpenseSection agora usará DisplayableExpense
-struct DisplayableExpenseSection: Identifiable { // Renomeado para clareza
+struct DisplayableExpenseSection: Identifiable {
     let id = UUID()
     let date: Date
-    let expenses: [DisplayableExpense] // Agora contém DisplayableExpense
+    let expenses: [DisplayableExpense]
 }
 
 struct SubcategoryDetailView: View {
     let subcategoriaModel: SubcategoriaModel
-    let isIncome: Bool // Para filtrar corretamente as transações
-    @ObservedObject var viewModel: ExpensesViewModel // ViewModel que contém transacoesExibidas
+    let isIncome: Bool
+    @ObservedObject var viewModel: ExpensesViewModel
     @Environment(\.dismiss) var dismiss
     @State private var expenseToDelete: DisplayableExpense? = nil
     @State private var showRecurrenceDeleteOptions: Bool = false
 
     
-    // Propriedade computada para gerar as seções da lista
     var sections: [DisplayableExpenseSection] {
-        // 1. Filtra as transações relevantes
         let filteredTransactions = viewModel.transacoesExibidas.filter { displayableExpense in
             displayableExpense.subcategoria?.id == subcategoriaModel.id && displayableExpense.isIncome == isIncome
         }
         
-        // 2. Agrupa por data (dia)
         let grouped = Dictionary(grouping: filteredTransactions) { expense in
             Calendar.current.startOfDay(for: expense.date)
         }
 
-        // 3. Mapeia para seções ordenadas
         let sortedDates = grouped.keys.sorted(by: { $0 > $1 })
 
         return sortedDates.map { date in
@@ -56,9 +58,7 @@ struct SubcategoryDetailView: View {
                         ForEach(sections) { section in
                             Section(header: Text(formatSectionDate(section.date))) {
                                 ForEach(section.expenses) { displayableExpense in
-                                    // Usar DisplayableExpenseRow ou uma view de linha similar
                                     DisplayableExpenseRow(expense: displayableExpense)
-                                    // Não precisa de swipe actions aqui se a deleção é feita na lista principal
                                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                         Button(role: .destructive) {
                                             if displayableExpense.isRecurringInstance && displayableExpense.originalExpenseID != nil {

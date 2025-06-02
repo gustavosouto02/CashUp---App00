@@ -33,7 +33,6 @@ struct DescriptionField: View {
                     }
             }
 
-            // Aviso discreto ao atingir o limite
             if expenseDescription.count >= characterLimit {
                 Text("Limite de 20 caracteres atingido")
                     .font(.caption)

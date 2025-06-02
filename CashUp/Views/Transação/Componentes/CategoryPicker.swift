@@ -1,5 +1,9 @@
-// Arquivo: CashUp/Views/Transação/Componentes/CategoryPicker.swift
-// Refatorado para SwiftData
+//
+//  CategoryPicker.swift
+//  CashUp
+//
+//  Created by Gustavo Souto Pereira on 13/05/25.
+//
 
 import SwiftUI
 import SwiftData
@@ -7,26 +11,26 @@ import SwiftData
 struct CategoryPicker: View {
     // Bindings agora para os modelos SwiftData
     @Binding var selectedSubcategoryModel: SubcategoriaModel?
-    @Binding var selectedCategoryModel: CategoriaModel? // A categoria pai da subcategoria selecionada
+    @Binding var selectedCategoryModel: CategoriaModel?
     @Binding var isCategorySheetPresented: Bool
 
     var body: some View {
         VStack(spacing: 8) {
             Button {
+                dismissKeyboard() 
                 isCategorySheetPresented = true
             } label: {
                 HStack {
-                    // Verifica se os modelos SwiftData estão selecionados
                     if let subModel = selectedSubcategoryModel,
-                       let catModel = selectedCategoryModel { // selectedCategoryModel deve ser o .categoria da subModel
+                       let catModel = selectedCategoryModel {
                         
                         CategoriasViewIcon(
                             systemName: subModel.icon,
-                            cor: catModel.color, // Usa a cor do CategoriaModel
+                            cor: catModel.color,
                             size: 24
                         )
                         
-                        Text(subModel.nome) // Nome da SubcategoriaModel
+                        Text(subModel.nome) 
                             .font(.title2)
                             .foregroundStyle(.primary)
                         

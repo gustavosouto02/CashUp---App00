@@ -1,3 +1,10 @@
+//
+//  DescriptionField.swift
+//  CashUp
+//
+//  Created by Gustavo Souto Pereira on 13/05/25.
+//
+
 import SwiftUI
 
 struct CurrencyAmountField: View {
@@ -5,7 +12,7 @@ struct CurrencyAmountField: View {
     @FocusState private var isFocused: Bool
     @State private var text: String = ""
 
-    private let maxDigits: Int = 10 // Limite de 10 dígitos (ex: 9999999999 → R$ 99.999.999,99)
+    private let maxDigits: Int = 10
 
     var body: some View {
         VStack(spacing: 4) {
@@ -17,7 +24,7 @@ struct CurrencyAmountField: View {
                 }
                 .onChange(of: text) { _, newValue in
                     let digits = newValue.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
-                    let limitedDigits = String(digits.prefix(maxDigits)) // Aqui está o limite
+                    let limitedDigits = String(digits.prefix(maxDigits))
                     let value = (Double(limitedDigits) ?? 0) / 100
                     amount = value
                     text = formattedAmount(value)

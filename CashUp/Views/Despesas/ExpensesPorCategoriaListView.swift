@@ -1,5 +1,9 @@
-// Arquivo: CashUp/Views/Despesas/ExpensesPorCategoriaListView.swift
-// Interação: Lista e Gráfico sincronizados. Apenas uma categoria expandida.
+//
+//  ExpensesPorCategoriaListView.swift
+//  CashUp
+//
+//  Created by Gustavo Souto Pereira on 19/05/25.
+//
 
 import SwiftUI
 import SwiftData
@@ -9,7 +13,7 @@ struct SubcategoryDetailSheetDataSwiftData: Identifiable {
     let id: UUID
     let subcategoriaModel: SubcategoriaModel
     let isIncome: Bool
-
+    
     init(subcategoriaModel: SubcategoriaModel, isIncome: Bool) {
         self.id = subcategoriaModel.id
         self.subcategoriaModel = subcategoriaModel
@@ -19,19 +23,19 @@ struct SubcategoryDetailSheetDataSwiftData: Identifiable {
 
 struct ExpensesPorCategoriaListView: View {
     @ObservedObject var viewModel: ExpensesViewModel
-
+    
     @State private var localSelectedTransactionType: Int
     @State private var expandedCategories: Set<UUID> = []
     @State private var selectedSubcategoryDataForSheet: SubcategoryDetailSheetDataSwiftData? = nil
     
     @State private var highlightedCategoryID: UUID? = nil
     @State private var rawSelectedChartItem: ChartCategoriasData? = nil
-
+    
     init(viewModel: ExpensesViewModel) {
         self.viewModel = viewModel
         self._localSelectedTransactionType = State(initialValue: viewModel.selectedTransactionType)
     }
-
+    
     struct ChartCategoriasData: Identifiable, Hashable {
         let id: UUID
         let categoria: CategoriaModel
@@ -39,7 +43,7 @@ struct ExpensesPorCategoriaListView: View {
         let color: Color
         let nome: String
         let icon: String
-
+        
         init(categoria: CategoriaModel, total: Double) {
             self.id = categoria.id
             self.categoria = categoria
@@ -48,16 +52,16 @@ struct ExpensesPorCategoriaListView: View {
             self.nome = categoria.nome
             self.icon = categoria.icon
         }
-
+        
         static func == (lhs: ChartCategoriasData, rhs: ChartCategoriasData) -> Bool {
             lhs.id == rhs.id
         }
-
+        
         func hash(into hasher: inout Hasher) {
             hasher.combine(id)
         }
     }
-
+    
     private var dataParaGrafico: [ChartCategoriasData] {
         let transacoes = transacoesRelevantesParaCalculo
         let groupedByCategoria = Dictionary(grouping: transacoes, by: { $0.categoria })
@@ -65,23 +69,34 @@ struct ExpensesPorCategoriaListView: View {
         return groupedByCategoria.compactMap { (categoriaOpt, transacoesCategoria) in
             guard let categoria = categoriaOpt, !transacoesCategoria.isEmpty else { return nil }
             let totalCategoria = transacoesCategoria.reduce(0) { $0 + $1.amount }
-            guard totalCategoria > 0 else { return nil }
+            guard totalCategoria > 0 else { return nil } 
             return ChartCategoriasData(categoria: categoria, total: totalCategoria)
-        }.sorted { $0.total > $1.total }
+        }.sorted { itemA, itemB in
+            if abs(itemA.total - itemB.total) > 0.001 {
+                return itemA.total > itemB.total
+            } else {
+                return itemA.nome.localizedCompare(itemB.nome) == .orderedAscending
+            }
+        }
     }
-
-    // Esta propriedade agora sempre retorna TODAS as categorias para o tipo de transação,
-    // consistentemente ordenadas. O highlightedCategoryID afeta apenas o gráfico.
+    
     private var categoriasParaLista: [CategoriaModel] {
         let todasCategoriasComTransacoes = transacoesRelevantesParaCalculo.compactMap { $0.categoria }
         let categoriasUnicas = Dictionary(grouping: todasCategoriasComTransacoes, by: { $0.id })
             .values.compactMap { $0.first }
         
-        return categoriasUnicas.sorted {
-            totalParaCategoria($0) > totalParaCategoria($1) // Ordena sempre por total
+        return categoriasUnicas.sorted { catA, catB in
+            let totalA = totalParaCategoria(catA)
+            let totalB = totalParaCategoria(catB)
+            
+            if abs(totalA - totalB) > 0.001 {
+                return totalA > totalB
+            } else {
+                return catA.nome.localizedCompare(catB.nome) == .orderedAscending
+            }
         }
     }
-
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             TransactionPicker(selectedTransactionType: $localSelectedTransactionType)
@@ -112,11 +127,23 @@ struct ExpensesPorCategoriaListView: View {
                     .padding(.vertical, 5)
                     .onChange(of: rawSelectedChartItem) { _, newValue in
                         withAnimation(.snappy) {
-                            highlightedCategoryID = newValue?.id
-                            if let newID = newValue?.id {
-                                expandedCategories = [newID]
-                            } else {
-                                expandedCategories.removeAll()
+                            let newCatID = newValue?.id
+                            if highlightedCategoryID == newCatID {
+                                highlightedCategoryID = newCatID
+                                if let id = newCatID {
+                                    expandedCategories = [id]
+                                } else if newValue == nil {
+                                    expandedCategories.removeAll()
+                                    highlightedCategoryID = nil
+                                }
+                            } else { // Nova seleção no gráfico
+                                highlightedCategoryID = newCatID
+                                if let id = newCatID {
+                                    expandedCategories = [id]
+                                } else {
+                                    expandedCategories.removeAll()
+                                    highlightedCategoryID = nil
+                                }
                             }
                         }
                     }
@@ -155,7 +182,7 @@ struct ExpensesPorCategoriaListView: View {
                         clearAllSelections()
                     }
                 }
-
+                
             } else {
                 VStack {
                     Spacer()
@@ -176,12 +203,12 @@ struct ExpensesPorCategoriaListView: View {
             }
             
             ScrollView {
-                    LazyVStack(spacing: 10) {
-                        ForEach(categoriasParaLista, id: \.id) { categoriaModel in
-                            categoriaSectionView(categoriaModel: categoriaModel)
-                        }
+                LazyVStack(spacing: 10) {
+                    ForEach(categoriasParaLista, id: \.id) { categoriaModel in
+                        categoriaSectionView(categoriaModel: categoriaModel)
                     }
-                    .padding(.bottom)
+                }
+                .padding(.bottom)
             }
         }
         .sheet(item: $selectedSubcategoryDataForSheet) { data in
@@ -194,11 +221,11 @@ struct ExpensesPorCategoriaListView: View {
         }
         .onAppear {
             if localSelectedTransactionType != viewModel.selectedTransactionType {
-                 localSelectedTransactionType = viewModel.selectedTransactionType
+                localSelectedTransactionType = viewModel.selectedTransactionType
             }
         }
     }
-
+    
     @ViewBuilder
     private func categoriaSectionView(categoriaModel: CategoriaModel) -> some View {
         VStack(spacing: 0) {
@@ -227,26 +254,20 @@ struct ExpensesPorCategoriaListView: View {
             .onTapGesture {
                 withAnimation(.snappy) {
                     let categoriaID = categoriaModel.id
-                    // Ação 1: Destacar/limpar destaque no gráfico E sincronizar rawSelectedChartItem
                     if highlightedCategoryID == categoriaID {
-                        // Se tocar na categoria que já está destacada E expandida,
-                        // vamos apenas recolhê-la e limpar o destaque do gráfico.
                         highlightedCategoryID = nil
                         rawSelectedChartItem = nil
                         expandedCategories.remove(categoriaID)
                     } else {
-                        // Se tocar em uma nova categoria, ou uma que não estava destacada
                         highlightedCategoryID = categoriaID
                         rawSelectedChartItem = dataParaGrafico.first(where: { $0.id == categoriaID })
-                        // Ação 2: Expandir esta categoria e recolher outras
                         expandedCategories = [categoriaID]
                     }
                 }
             }
-
+            
             if expandedCategories.contains(categoriaModel.id) {
-                // ... (código das subcategorias permanece o mesmo)
-                VStack(spacing: 0) {
+                VStack(spacing: 0) { // VStack para as subcategorias
                     ForEach(subcategoriasParaCategoria(categoriaModel), id: \.id) { subModel in
                         Button {
                             selectedSubcategoryDataForSheet = SubcategoryDetailSheetDataSwiftData(
@@ -282,6 +303,7 @@ struct ExpensesPorCategoriaListView: View {
                     }
                 }
                 .background(Color(.secondarySystemBackground))
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: 10))
@@ -298,12 +320,6 @@ struct ExpensesPorCategoriaListView: View {
         expandedCategories.removeAll()
     }
     
-    // Esta função não é mais toggleSingle, ela apenas gerencia a expansão.
-    // A lógica de "apenas uma" está no .onTapGesture da categoriaSectionView.
-    // Ou podemos renomeá-la e ajustar a lógica.
-    // Por ora, vou remover toggleSingleCategoryExpansion e incorporar a lógica no onTapGesture.
-
-    // As funções de cálculo de total permanecem as mesmas
     func subcategoriasParaCategoria(_ categoriaModel: CategoriaModel) -> [SubcategoriaModel] {
         let transacoesDaCategoria = transacoesRelevantesParaCalculo.filter { $0.categoria?.id == categoriaModel.id }
         let subcategorias = transacoesDaCategoria.compactMap { $0.subcategoria }
@@ -314,25 +330,24 @@ struct ExpensesPorCategoriaListView: View {
             totalParaSubcategoria($0) > totalParaSubcategoria($1)
         }
     }
-
+    
     func totalParaCategoria(_ categoriaModel: CategoriaModel) -> Double {
         transacoesRelevantesParaCalculo
             .filter { $0.categoria?.id == categoriaModel.id }
             .reduce(0.0) { $0 + $1.amount }
     }
-
+    
     func totalParaSubcategoria(_ subModel: SubcategoriaModel) -> Double {
         transacoesRelevantesParaCalculo
             .filter { $0.subcategoria?.id == subModel.id }
             .reduce(0.0) { $0 + $1.amount }
     }
-
-    // toggleCategory agora é a única função para expansão e é chamada pelo onTapGesture
-    func toggleCategory(_ id: UUID) { // Esta função agora se torna a toggleSingleCategoryExpansion
+    
+    func toggleCategory(_ id: UUID) {
         if expandedCategories.contains(id) {
             expandedCategories.remove(id)
         } else {
-            expandedCategories = [id] // Garante que apenas uma esteja expandida
+            expandedCategories = [id]
         }
     }
 }

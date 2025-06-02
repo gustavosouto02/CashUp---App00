@@ -1,5 +1,9 @@
-// Arquivo: CashUp/Sources/Extensions/ViewExtensions.swift
-// (Ou qualquer outro local que faça sentido para suas extensões globais)
+//
+//  ViewExtensions.swift
+//  CashUp
+//
+//  Created by Gustavo Souto Pereira on 19/05/25.
+//
 
 import SwiftUI
 
@@ -9,4 +13,7 @@ extension View {
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         }
     }
+}
+func dismissKeyboard() {
+    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
 }

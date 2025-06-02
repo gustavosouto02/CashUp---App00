@@ -5,7 +5,6 @@
 //  Created by Gustavo Souto Pereira on 29/05/25.
 //
 
-// DailyExpensesDetailView.swift
 import SwiftUI
 
 struct DailyExpensesDetailView: View {
@@ -14,23 +13,21 @@ struct DailyExpensesDetailView: View {
     @Environment(\.dismiss) var dismiss
 
     private var expensesForThisDay: [DisplayableExpense] {
-        // Chama a nova função na ViewModel para buscar despesas (isIncome: false) para a data específica.
-        // A ordenação pode ser feita aqui ou na ViewModel.
         return expensesViewModel.fetchTransactions(forSpecificDate: selectedDate, isIncome: false)
-            .sorted(by: { $0.amount > $1.amount }) // Exemplo de ordenação
+            .sorted(by: { $0.amount > $1.amount })
     }
 
     var body: some View {
         NavigationStack {
             VStack {
-                if expensesForThisDay.isEmpty { // Usa a nova propriedade
+                if expensesForThisDay.isEmpty {
                     Text("Nenhuma despesa registrada para este dia.")
                         .foregroundColor(.secondary)
                         .padding()
                         .frame(maxHeight: .infinity)
                 } else {
                     List {
-                        ForEach(expensesForThisDay) { expense in // Usa a nova propriedade
+                        ForEach(expensesForThisDay) { expense in 
                             DisplayableExpenseRow(expense: expense)
                         }
                     }

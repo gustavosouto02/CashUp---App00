@@ -5,9 +5,6 @@
 //  Created by Gustavo Souto Pereira on 19/05/25.
 //
 
-// Arquivo: CashUp/Views/Despesas/ExpensesResumoView.swift
-// Praticamente inalterado, pois já recebe valores. A fonte dos valores mudou no ViewModel.
-
 import SwiftUI
 
 struct ExpensesResumoView: View {
@@ -18,24 +15,22 @@ struct ExpensesResumoView: View {
     }
     
     private var saldoColor: Color {
-        // Pequena correção: se income for igual a expense, pode ser primário ou verde.
-        // Se o saldo for negativo, vermelho.
         if balance == 0 {
-            return .primary // ou .gray, .orange, etc.
+            return .primary
         }
         return balance > 0 ? .green : .red
     }
     
     var body: some View {
         HStack{
-            resumoItem(value: income, label: "Renda", color: .green) // Cor explícita para renda
+            resumoItem(value: income, label: "Renda", color: .green)
             Spacer()
-            resumoItem(value: expense, label: "Despesa", color: .red) // Cor explícita para despesa
+            resumoItem(value: expense, label: "Despesa", color: .red)
             Spacer()
             resumoItem(value: balance, label: "Saldo", color: saldoColor)
         }
         .padding()
-        .background(Color(.secondarySystemBackground)) // Cor do sistema para adaptabilidade
+        .background(Color(.secondarySystemBackground))
         .cornerRadius(12)
     }
     
@@ -46,7 +41,7 @@ struct ExpensesResumoView: View {
                 .bold()
                 .foregroundStyle(color)
                 .lineLimit(1)
-                .minimumScaleFactor(0.5) // Reduz a fonte se o valor for longo
+                .minimumScaleFactor(0.5)
                 .frame(maxWidth: .infinity)
             Text(label)
                 .font(.caption)
@@ -54,11 +49,4 @@ struct ExpensesResumoView: View {
         }
         .frame(maxWidth: .infinity)
     }
-}
-
-// Preview para ExpensesResumoView (opcional, mas bom para design)
-#Preview {
-    ExpensesResumoView(income: 1500.75, expense: 850.50)
-        .padding()
-        .background(Color.gray.opacity(0.1))
 }

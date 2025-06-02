@@ -1,4 +1,9 @@
-// Arquivo: CashUp/Views/Transação/AddTransactionViewModel.swift
+//
+//  AddTransactionViewModel.swift
+//  CashUp
+//
+//  Created by Gustavo Souto Pereira on 27/05/25.
+//
 
 import Foundation
 import SwiftUI

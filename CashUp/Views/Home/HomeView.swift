@@ -1,6 +1,11 @@
-// Arquivo: CashUp/Views/Home/HomeView.swift
-// Refatorado para SwiftData usando HomeViewModel corretamente
-// Padding de todos os cards ajustado para consistência com o miniChartCard
+//
+//  HomeView.swift
+//  CashUp
+//
+//  Created by Gustavo Souto Pereira on 19/05/25.
+//
+
+
 
 import SwiftUI
 import SwiftData
@@ -99,9 +104,8 @@ struct HomeView: View {
                 InteractiveDailyExpensesChart(dailyData: homeViewModel.dailyExpenseChartData, expensesViewModel: ExpensesViewModel(modelContext: modelContext))
                     .frame(height: 150)
             } else {
-                // ESTADO VAZIO AMIGÁVEL PARA O GRÁFICO
                 VStack(spacing: 8) {
-                    Image(systemName: "chart.bar.xaxis.ascending.badge.clock") // Ícone sugestivo
+                    Image(systemName: "chart.bar.xaxis.ascending.badge.clock")
                         .font(.system(size: 30))
                         .foregroundColor(.secondary.opacity(0.7))
                     Text("Ainda sem gastos este mês!")
@@ -114,8 +118,7 @@ struct HomeView: View {
                         .multilineTextAlignment(.center)
                 }
                 .frame(maxWidth: .infinity)
-               // .frame(height: 150) // Mantém a altura do card consistente
-                .padding() // Adiciona padding interno ao conteúdo do placeholder
+                .padding()
             }
         }
         .padding()
@@ -131,7 +134,7 @@ struct HomeView: View {
                 .environmentObject(homeViewModel.planningViewModel)
                 .environmentObject(homeViewModel.expensesViewModel)
         } label: {
-            VStack(alignment: .leading) { // This is the card's content view
+            VStack(alignment: .leading) {
                 if homeViewModel.totalPlanejadoMes > 0 {
                     Text("Planejamento do Mês")
                         .font(.headline)
@@ -158,9 +161,7 @@ struct HomeView: View {
                         .font(.headline)
                         .padding(.bottom, 16)
 
-                    // ESTADO VAZIO AMIGÁVEL PARA O PLANEJAMENTO
-                        //Spacer(minLength: 8)
-                        HStack { // Para centralizar o conteúdo do placeholder
+                        HStack {
                             Spacer()
                             VStack(spacing: 8) {
                                 Image(systemName: "pencil.and.list.clipboard")
@@ -177,150 +178,140 @@ struct HomeView: View {
                             }
                             Spacer()
                         }
-                        //Spacer(minLength: 8)
                 }
             }
-            .padding() // 1. Inner padding
+            .padding()
             .frame(maxWidth: .infinity, minHeight: 150)
-            .background(Color(.secondarySystemBackground)) // 3. Background
-            .cornerRadius(12) // 4. Corner radius
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-    
-    // MARK: - Despesas e Resumo Combinados (Novo Layout) - Estilo Ajustado
-    private var expensesSummaryCombinedCard: some View {
-        NavigationLink {
-            ExpensesView()
-                .environmentObject(homeViewModel.expensesViewModel)
-        } label: {
-            HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Despesas do Mês")
-                        .font(.headline)
-                        .padding(.bottom, 2)
-                    
-                    if homeViewModel.totalSpentMonth > 0 {
-                        Text("Total Gasto:")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Text(homeViewModel.totalSpentMonth, format: .currency(code: "BRL"))
-                            .font(.title.bold())
-                            .minimumScaleFactor(0.5) // Diminui o tamanho do texto se for muito longo
-                            .lineLimit(1)            // Mantém em uma linha só
-                            .frame(maxWidth: 200, alignment: .leading) // Evita quebra e layout estourado
-                            .padding(.bottom, 6)
-
-                        
-                        if !homeViewModel.categoriasResumo.isEmpty {
-                            Text("Categorias Principais")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                                .padding(.bottom, 2)
-                            ForEach(homeViewModel.categoriasResumo.prefix(3)) { item in
-                                HStack(spacing: 6) {
-                                    Rectangle()
-                                        .fill(item.categoria.color)
-                                        .frame(width: 10, height: 10)
-                                        .cornerRadius(2)
-                                    Text(item.categoria.nome)
-                                        .font(.subheadline)
-                                        .lineLimit(1)
-                                    Spacer()
-                                    Text(String(format: "%.0f%%", item.percentual * 100))
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                            if homeViewModel.categoriasResumo.count > 3 {
-                                HStack(spacing: 6) {
-                                    Rectangle()
-                                        .fill(Color.gray.opacity(0.6))
-                                        .frame(width: 10, height: 10)
-                                        .cornerRadius(2)
-                                    Text("Outras")
-                                        .font(.caption)
-                                        .lineLimit(1)
-                                    Spacer()
-                                    let outrasPercent = homeViewModel.categoriasResumo.dropFirst(3).map { $0.percentual }.reduce(0, +)
-                                    Text(String(format: "%.0f%%", outrasPercent * 100))
-                                        .font(.caption.weight(.medium))
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                    } else {
-                        // ESTADO VAZIO AMIGÁVEL PARA DESPESAS
-                        HStack { // Para centralizar o conteúdo do placeholder
-                            Spacer()
-                            VStack(spacing: 8) {
-                                Image(systemName: "creditcard")
-                                    .font(.system(size: 30))
-                                    .foregroundColor(.secondary.opacity(0.7))
-                                Text("Sem despesas este mês")
-                                    .font(.callout)
-                                    .fontWeight(.medium)
-                                    .foregroundColor(.secondary)
-                                Text("Ótimo para o bolso ou adiciome um gasto!")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                    .multilineTextAlignment(.center)
-                            }
-                            Spacer()
-                        }
-                    }
-                    if homeViewModel.totalSpentMonth > 0 && homeViewModel.categoriasResumo.isEmpty {
-                        Text("Resumo por categoria indisponível.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .padding(.top, 4)
-                    }
-                }
-                .layoutPriority(1) // Dá prioridade de largura para o conteúdo de texto
-                
-                Spacer() // Este Spacer empurra o gráfico para a extremidade direita
-                
-                // GRÁFICO DE DESPESAS (à direita)
-                if homeViewModel.totalSpentMonth > 0 && !homeViewModel.categoriasResumo.isEmpty {
-                    let categoriesWithValues = homeViewModel.categoriasResumo.filter { $0.total > 0 } // Filtra para o gráfico
-                    
-                    if !categoriesWithValues.isEmpty { // Só mostra o gráfico se houver categorias com valores
-                        Chart(categoriesWithValues) { item in
-                            SectorMark(
-                                angle: .value("Total Gasto", item.total),
-                                innerRadius: .ratio(0.65),
-                                angularInset: 1.5
-                            )
-                            .foregroundStyle(item.categoria.color)
-                            .cornerRadius(5)
-                            .accessibilityLabel(item.categoria.nome)
-                            .accessibilityValue("\(String(format: "%.0f", item.percentual * 100))%")
-                        }
-                        .frame(width: 100, height: 100)
-                    }
-                }
-            }
-            .padding() // Padding interno do card
-            .frame(maxWidth: .infinity, minHeight: 150) // minHeight conforme seu código
             .background(Color(.secondarySystemBackground))
             .cornerRadius(12)
         }
         .buttonStyle(PlainButtonStyle())
     }
-}
-// Preview para HomeView
-#Preview {
-    let config = ModelConfiguration(isStoredInMemoryOnly: true)
-    let container = try! ModelContainer(for: Schema([
-        CategoriaModel.self, SubcategoriaModel.self, ExpenseModel.self,
-        CategoriaPlanejadaModel.self, SubcategoriaPlanejadaModel.self
-    ]), configurations: [config])
-    let modelContext = container.mainContext
+    
+    // MARK: - Despesas e Resumo Combinados (Novo Layout)
+    private var expensesSummaryCombinedCard: some View {
+        NavigationLink {
+            ExpensesView()
+                .environmentObject(homeViewModel.expensesViewModel)
+        } label: {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(alignment: .center, spacing: 12) {
+                    // COLUNA ESQUERDA
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Despesas do Mês")
+                            .font(.headline)
+                            .padding(.bottom, 2)
 
-    let catPrev = CategoriaModel(id: UUID(), nome: "Alimentação", icon: "fork.knife", color: .blue)
-    modelContext.insert(catPrev)
-    try? modelContext.save()
+                        if homeViewModel.totalSpentMonth > 0 {
+                            Text("Total Gasto:")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text(homeViewModel.totalSpentMonth, format: .currency(code: "BRL"))
+                                .font(.title.bold())
+                                .minimumScaleFactor(0.5)
+                                .lineLimit(1)
+                                .frame(maxWidth: 200, alignment: .leading)
+                                .padding(.bottom, 6)
 
-    return HomeView(modelContext: modelContext)
-        .environment(\.modelContext, modelContext)
+                            if !homeViewModel.categoriasResumo.isEmpty {
+                                Text("Categorias Principais")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                                    .padding(.bottom, 2)
+                                ForEach(homeViewModel.categoriasResumo.prefix(3)) { item in
+                                    HStack(spacing: 6) {
+                                        Rectangle()
+                                            .fill(item.categoria.color)
+                                            .frame(width: 10, height: 10)
+                                            .cornerRadius(2)
+                                        Text(item.categoria.nome)
+                                            .font(.subheadline)
+                                            .lineLimit(1)
+                                        Spacer()
+                                        Text(String(format: "%.0f%%", item.percentual * 100))
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                if homeViewModel.categoriasResumo.count > 3 {
+                                    HStack(spacing: 6) {
+                                        Rectangle()
+                                            .fill(Color.gray.opacity(0.6))
+                                            .frame(width: 10, height: 10)
+                                            .cornerRadius(2)
+                                        Text("Outras")
+                                            .font(.caption)
+                                            .lineLimit(1)
+                                        Spacer()
+                                        let outrasPercent = homeViewModel.categoriasResumo.dropFirst(3).map { $0.percentual }.reduce(0, +)
+                                        Text(String(format: "%.0f%%", outrasPercent * 100))
+                                            .font(.caption.weight(.medium))
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
+                            
+                        } else {
+                            Spacer()
+                            HStack {
+                                Spacer()
+                                VStack(spacing: 8) {
+                                    Image(systemName: "creditcard")
+                                        .font(.system(size: 30))
+                                        .padding(.leading, 20)
+                                        .foregroundColor(.secondary.opacity(0.7))
+                                    Text("Sem despesas este mês")
+                                        .font(.callout)
+                                        .fontWeight(.medium)
+                                        .padding(.leading, 20)
+                                        .foregroundColor(.secondary)
+                                    Text("Ótimo para o bolso ou adicione um gasto!")
+                                        .font(.caption)
+                                        .padding(.leading, 20)
+                                        .foregroundColor(.secondary)
+                                        .multilineTextAlignment(.center)
+                                }
+                                Spacer()
+                            }
+                            Spacer()
+                        }
+
+                        if homeViewModel.totalSpentMonth > 0 && homeViewModel.categoriasResumo.isEmpty {
+                            Text("Resumo por categoria indisponível.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .padding(.top, 4)
+                        }
+                    }
+                    .layoutPriority(1)
+                    .frame(maxHeight: .infinity)
+
+                    Spacer()
+
+                    if homeViewModel.totalSpentMonth > 0 && !homeViewModel.categoriasResumo.isEmpty {
+                        let categoriesWithValues = homeViewModel.categoriasResumo.filter { $0.total > 0 }
+                        if !categoriesWithValues.isEmpty {
+                            Chart(categoriesWithValues) { item in
+                                SectorMark(
+                                    angle: .value("Total Gasto", item.total),
+                                    innerRadius: .ratio(0.65),
+                                    angularInset: 1.5
+                                )
+                                .foregroundStyle(item.categoria.color)
+                                .cornerRadius(5)
+                                .accessibilityLabel(item.categoria.nome)
+                                .accessibilityValue("\(String(format: "%.0f", item.percentual * 100))%")
+                            }
+                            .frame(width: 100, height: 100)
+                        }
+                    }
+                }
+            }
+            .padding()
+            .frame(maxWidth: .infinity, minHeight: 150)
+            .background(Color(.secondarySystemBackground))
+            .cornerRadius(12)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
 }

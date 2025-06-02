@@ -5,8 +5,6 @@
 //  Created by Gustavo Souto Pereira on 26/05/25.
 //
 
-// Arquivo: Models/ExpenseModel.swift
-// (Baseado em Expense de CashUp/Views/Despesas/Expense.swift)
 
 import SwiftData
 import SwiftUI
@@ -20,7 +18,6 @@ final class ExpenseModel {
     var isIncome: Bool
     var repetition: RepetitionData? 
 
-    // Relacionamentos
     var categoria: CategoriaModel?
     var subcategoria: SubcategoriaModel?
 
@@ -43,8 +40,6 @@ final class ExpenseModel {
     }
 }
 
-// Dentro da extensão ou do corpo de ExpenseModel.swift
-
 extension ExpenseModel {
     func generateOccurrences(forDateInterval queryInterval: DateInterval, calendar: Calendar = .current) -> [DisplayableExpense] {
         guard let repetitionData = self.repetition, repetitionData.repeatOption != .nunca else {
@@ -57,17 +52,16 @@ extension ExpenseModel {
         var occurrences: [DisplayableExpense] = []
         var currentDateInLoop = self.date
         let recurrenceStartDate = self.date
-        
-        // Obter as datas excluídas, normalizadas para o início do dia para comparação correta
+
         let normalizedExcludedDates = repetitionData.excludedDates?.map { calendar.startOfDay(for: $0) } ?? []
 
         while currentDateInLoop <= (repetitionData.endDate ?? queryInterval.end) {
-            let normalizedCurrentDateInLoop = calendar.startOfDay(for: currentDateInLoop) // Normaliza para comparação
+            let normalizedCurrentDateInLoop = calendar.startOfDay(for: currentDateInLoop)
 
             if currentDateInLoop >= queryInterval.start &&
                currentDateInLoop <= queryInterval.end &&
                currentDateInLoop >= recurrenceStartDate &&
-               !normalizedExcludedDates.contains(normalizedCurrentDateInLoop) { // <<< NOVA VERIFICAÇÃO
+               !normalizedExcludedDates.contains(normalizedCurrentDateInLoop) { 
 
                 if let definiteEndDate = repetitionData.endDate, currentDateInLoop > definiteEndDate {
                     break

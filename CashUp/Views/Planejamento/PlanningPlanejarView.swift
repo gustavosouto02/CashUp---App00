@@ -1,10 +1,14 @@
-// Arquivo: CashUp/Views/Planejamento/PlanningPlanejarView.swift
-// Refatorado para usar CategoriaModel/SubcategoriaModel consistentemente
-// Gráfico de Despesas Planejadas atualizado para Swift Charts à esquerda
+//
+//  PlanningPlanejarView.swift
+//  CashUp
+//
+//  Created by Gustavo Souto Pereira on 19/05/25.
+//
+
 
 import SwiftUI
 import SwiftData
-import Charts // Adicionar importação para Swift Charts
+import Charts
 
 struct PlanningPlanejarView: View {
     @ObservedObject var viewModel: PlanningViewModel
@@ -104,7 +108,7 @@ struct PlanningPlanejarView: View {
             }
         }
         .animation(.easeInOut, value: showDuplicateAlert)
-        .hideKeyboardOnTap() // Certifique-se que esta extensão está definida e funcional
+        .hideKeyboardOnTap()
     }
     
     private func processarSelecaoDoSheet(subcategoria: SubcategoriaModel, categoria: CategoriaModel) {
@@ -234,7 +238,7 @@ struct PlanningPlanejarView: View {
     private func categoriaPlanejadaView(_ catPlanModel: CategoriaPlanejadaModel) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                CategoriasViewIcon( // Certifique-se que esta View existe
+                CategoriasViewIcon(
                     systemName: catPlanModel.iconCategoriaOriginal,
                     cor: catPlanModel.corCategoriaOriginal,
                     size: 24
@@ -351,14 +355,14 @@ struct PlanningPlanejarView: View {
             .frame(maxWidth: .infinity, alignment: .center)
             .frame(height: 30)
             .padding()
-            .background(Color(.secondarySystemBackground)) // Alterado para consistência
+            .background(Color(.secondarySystemBackground))
             .cornerRadius(12)
         }
         .padding(.horizontal)
     }
 }
 
-// View para o Sheet de Configuração de Repetição
+// MARK: Sheet de Configuração de Repetição
 struct RepeatSettingsSheetView: View {
     @Binding var repetitionData: RepetitionData
     var startDateForRepetition: Date
@@ -366,7 +370,7 @@ struct RepeatSettingsSheetView: View {
 
     @State private var localRepeatOption: RepeatOption
     @State private var localRepeatEndDate: Date?
-    @State private var hasEndDateToggle: Bool // Para controlar o Toggle
+    @State private var hasEndDateToggle: Bool
 
     init(repetitionData: Binding<RepetitionData>, startDateForRepetition: Date) {
         self._repetitionData = repetitionData
@@ -391,9 +395,6 @@ struct RepeatSettingsSheetView: View {
                         if newOption == .nunca {
                             localRepeatEndDate = nil
                             hasEndDateToggle = false
-                        } else if newOption != .nunca && !hasEndDateToggle && localRepeatEndDate == nil {
-                             // Opcional: Ativar toggle se uma repetição for escolhida e não houver data final
-                             // hasEndDateToggle = true // Pode ser confuso para o usuário
                         }
                     }
                 }
@@ -434,7 +435,3 @@ struct RepeatSettingsSheetView: View {
         }
     }
 }
-
-// Certifique-se de que as extensões e structs necessárias como Date().startOfMonth(),
-// RepeatOption, RepetitionData, CategoriasViewIcon, SubcategoriaPlanejadaRowView
-// e CategorySelectionSheet/CategoriesViewModel estejam definidas e funcionais.

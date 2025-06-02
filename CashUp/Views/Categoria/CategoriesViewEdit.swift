@@ -1,24 +1,24 @@
-// Arquivo: CashUp/Views/Categoria/CategoriesViewEdit.swift
-// Refatorado para usar SwiftData
+//
+//  CategoriesViewEdit.swift
+//  CashUp
+//
+//  Created by Gustavo Souto Pereira on 19/05/25.
+//
 
 import SwiftUI
 import SwiftData
 
 struct CategoriesViewEdit: View {
-    // Busca todas as CategoriaModel diretamente do SwiftData, ordenadas por nome
     @Query(sort: \CategoriaModel.nome) private var categorias: [CategoriaModel]
     
     @Environment(\.modelContext) private var modelContext
-    // Adicione @State para edição, se necessário, como qual categoria está selecionada para edição, etc.
-
     var body: some View {
         NavigationStack {
             List {
                 if categorias.isEmpty {
                     Text("Nenhuma categoria encontrada. Tente adicionar algumas.")
                 } else {
-                    ForEach(categorias) { categoriaModel in // Agora itera sobre [CategoriaModel]
-                        // CategoriaSectionView já espera CategoriaModel, então está correto
+                    ForEach(categorias) { categoriaModel in
                         CategoriaSectionView(categoria: categoriaModel)
                         // Adicione aqui a lógica de swipe para deletar ou botões para editar
                         // Exemplo de swipe para deletar:
@@ -96,30 +96,3 @@ struct CategoriaSectionView: View { //
     }
 }
 
-#Preview {
-    // Preview precisa de um ModelContainer
-    do {
-        let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: Schema([CategoriaModel.self, SubcategoriaModel.self]), configurations: [config])
-        
-        // Popular dados de exemplo para o preview
-        let context = container.mainContext
-        let cat1 = CategoriaModel(nome: "Alimentação", icon: "fork.knife", color: .orange)
-        let sub1_1 = SubcategoriaModel(nome: "Restaurante", icon: "r.circle", categoria: cat1)
-        let sub1_2 = SubcategoriaModel(nome: "Mercado", icon: "cart", categoria: cat1)
-        cat1.subcategorias = [sub1_1, sub1_2]
-        context.insert(cat1)
-        
-        let cat2 = CategoriaModel(nome: "Transporte", icon: "car", color: .blue)
-        let sub2_1 = SubcategoriaModel(nome: "Gasolina", icon: "fuelpump", categoria: cat2)
-        cat2.subcategorias = [sub2_1]
-        context.insert(cat2)
-        
-        try context.save()
-        
-        return CategoriesViewEdit()
-            .modelContainer(container)
-    } catch {
-        return Text("Falha ao criar preview para CategoriesViewEdit: \(error.localizedDescription)")
-    }
-}

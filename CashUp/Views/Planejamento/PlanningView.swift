@@ -1,5 +1,9 @@
-// Arquivo: CashUp/Views/Planejamento/PlanningView.swift
-// Refatorado para receber ViewModels via EnvironmentObject
+//
+//  PlanningView.swift
+//  CashUp
+//
+//  Created by Gustavo Souto Pereira on 19/05/25.
+//
 
 import SwiftUI
 import SwiftData
@@ -11,7 +15,6 @@ struct PlanningView: View {
     @EnvironmentObject var expensesViewModel: ExpensesViewModel
 
     @State private var isEditing: Bool = false
-    // Armazena IDs de SubcategoriaPlanejadaModel para deleção
     @State private var subcategoriasPlanejadasSelecionadasParaDelecao: Set<UUID> = []
 
     var body: some View {
@@ -58,6 +61,14 @@ struct PlanningView: View {
             .navigationTitle("Planejamento")
             .toolbar {
                 ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    Button {
+                        // Agora chama a função para mostrar o alerta de confirmação
+                        planningViewModel.confirmCopyCurrentMonthPlanningToNextMonth()
+                    } label: {
+                        Label("Copiar para Próximo Mês", systemImage: "document.on.document.fill")
+                    }
+                }
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
                     if planningViewModel.selectedTab == 0 {
                         if isEditing {
                             Button(action: {
@@ -81,6 +92,25 @@ struct PlanningView: View {
                         }
                     }
                 }
+            }
+            .alert(
+                planningViewModel.copyPlanningAlertTitle,
+                isPresented: $planningViewModel.showCopyConfirmationAlert
+            ) {
+                Button("Cancelar", role: .cancel) { }
+                Button("Copiar") {
+                    planningViewModel.executeCopyPlanning()
+                }
+            } message: {
+                Text(planningViewModel.copyPlanningAlertMessage)
+            }
+            .alert(
+                planningViewModel.copyResultAlertTitle,
+                isPresented: $planningViewModel.showCopyResultAlert
+            ) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(planningViewModel.copyResultAlertMessage)
             }
         }
     }
