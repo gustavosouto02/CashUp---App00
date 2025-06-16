@@ -155,8 +155,8 @@ struct PlanningPlanejarView: View {
                     }
                     .frame(width: 80, height: 80)
                 } else {
-                    Image(systemName: "chart.pie.fill") // Ícone mais apropriado
-                        .font(.system(size: 50)) // Ajustado
+                    Image(systemName: "chart.pie.fill")
+                        .font(.system(size: 50)) 
                         .foregroundColor(Color.secondary.opacity(0.4))
                         .frame(width: 80, height: 80, alignment: .center)
                 }

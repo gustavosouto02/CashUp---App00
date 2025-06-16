@@ -1,6 +1,3 @@
-// Arquivo: CashUp/CashUpApp.swift
-// Abordagem alternativa para .modelContainer e seeding
-
 import SwiftUI
 import SwiftData
 
@@ -35,7 +32,6 @@ struct CashUpApp: App {
                         .transition(.opacity.animation(.easeInOut(duration: 0.5)))
                 } else {
                     HomeView(modelContext: sharedModelContainer.mainContext)
-                        // Adiciona uma transição suave de opacidade
                         .transition(.opacity.animation(.easeInOut(duration: 0.5)))
                 }
             }
