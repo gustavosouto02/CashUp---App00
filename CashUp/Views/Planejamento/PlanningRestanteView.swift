@@ -121,10 +121,14 @@ struct PlanningRestanteView: View {
                 )
                 Text(categoriaPModel.nomeCategoriaOriginal)
                     .font(.headline)
+                    .minimumScaleFactor(0.5)
+                    .lineLimit(1)
                 Spacer()
                 Text("\(formatCurrency(restanteCategoria)) restante")
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(restanteCategoria < 0 ? .red : .secondary)
+                    .minimumScaleFactor(0.5)
+                    .lineLimit(1)
             }
 
             if let subcategoriasPlanejadas = categoriaPModel.subcategoriasPlanejadas, !subcategoriasPlanejadas.isEmpty {
